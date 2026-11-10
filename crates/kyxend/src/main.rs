@@ -55,6 +55,16 @@ enum Cmd {
     },
     /// Remove everything `install` created (config files are kept).
     Uninstall,
+    /// Write a read-only hardware report of your Logitech devices (Markdown),
+    /// to attach to an issue when asking for support of a keyboard.
+    Report {
+        /// Where to write it (default: current folder).
+        #[arg(short, long)]
+        output: Option<std::path::PathBuf>,
+        /// Don't wait for Enter after the notice.
+        #[arg(short, long)]
+        yes: bool,
+    },
 }
 
 fn main() -> Result<()> {
@@ -75,6 +85,7 @@ fn main() -> Result<()> {
         Cmd::Reload => client(&ipc::Request::Reload),
         Cmd::Install { no_tray } => install::install(!no_tray),
         Cmd::Uninstall => install::uninstall(),
+        Cmd::Report { output, yes } => report(output, yes),
     }
 }
 
@@ -133,6 +144,84 @@ fn probe() -> Result<()> {
             op.sector_size
         );
     }
+    Ok(())
+}
+
+fn report(output: Option<std::path::PathBuf>, yes: bool) -> Result<()> {
+    use std::io::{BufRead, IsTerminal, Write};
+
+    let german = ["LC_ALL", "LC_MESSAGES", "LANG"]
+        .iter()
+        .filter_map(|v| std::env::var(v).ok())
+        .find(|v| !v.is_empty())
+        .is_some_and(|v| v.starts_with("de"));
+    let say = |de: &str, en: &str| if german { de.to_owned() } else { en.to_owned() };
+
+    println!("{}\n", kyxen_report::notice(german));
+    if !yes && std::io::stdin().is_terminal() {
+        print!(
+            "{}",
+            say(
+                "Weiter mit Enter, abbrechen mit Strg+C … ",
+                "Press Enter to continue, Ctrl+C to cancel … "
+            )
+        );
+        std::io::stdout().flush()?;
+        std::io::stdin().lock().read_line(&mut String::new())?;
+    }
+    println!(
+        "\n{}",
+        say("Suche Logitech-Geräte …", "Looking for Logitech devices …")
+    );
+
+    let report = kyxen_report::collect();
+    for line in report.summary() {
+        println!("{line}");
+    }
+    if report.is_empty() {
+        println!(
+            "{}",
+            say(
+                "Keine Logitech-Geräte gefunden. Ist die Tastatur angesteckt?",
+                "No Logitech devices found. Is the keyboard plugged in?"
+            )
+        );
+    }
+    for node in report.denied() {
+        println!(
+            "{}",
+            say(
+                &format!(
+                    "Kein Zugriff auf {}: für alle Details mit sudo starten (sudo kyxend report).",
+                    node.display()
+                ),
+                &format!(
+                    "No access to {}: run with sudo for all details (sudo kyxend report).",
+                    node.display()
+                ),
+            )
+        );
+    }
+
+    let name = kyxen_report::file_name();
+    let candidates = output.map_or_else(
+        || vec![name.clone().into(), std::env::temp_dir().join(&name)],
+        |p| vec![p],
+    );
+    let path = kyxen_report::write(&report.markdown(), &candidates)?;
+    println!(
+        "\n{}\n  {}\n\n{}\n  {}",
+        say(
+            "Fertig! Der Bericht liegt hier:",
+            "Done! The report is here:"
+        ),
+        path.display(),
+        say(
+            "Schau ihn dir gern an und häng ihn an ein neues Issue (GitHub-Konto nötig):",
+            "Have a look and attach it to a new issue (needs a GitHub account):"
+        ),
+        kyxen_report::ISSUE_URL
+    );
     Ok(())
 }
 

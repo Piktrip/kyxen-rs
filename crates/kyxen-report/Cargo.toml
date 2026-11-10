@@ -1,6 +1,6 @@
 [package]
 name = "kyxen-report"
-description = "Read-only hardware report for Logitech keyboards, to help add support to Kyxen"
+description = "Kyxen: read-only hardware report for Logitech keyboards, to help add support"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

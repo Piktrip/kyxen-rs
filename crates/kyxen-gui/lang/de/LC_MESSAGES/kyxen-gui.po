@@ -356,3 +356,36 @@ msgstr "„{}“ gelöscht"
 
 msgid "Unofficial project, not affiliated with Logitech. Use at your own risk, without any warranty."
 msgstr "Inoffizielles Projekt, keine Verbindung zu Logitech. Benutzung auf eigene Gefahr, ohne Gewährleistung."
+
+msgid "HELP"
+msgstr "HILFE"
+
+msgid "Keyboard report"
+msgstr "Tastaturbericht"
+
+msgid "Reads what your keyboard can do and saves it as a file, so support for it can be added. Changes nothing on the keyboard."
+msgstr "Liest aus, was deine Tastatur kann, und speichert es als Datei – damit sie unterstützt werden kann. Ändert nichts an der Tastatur."
+
+msgid "Creating …"
+msgstr "Erstelle …"
+
+msgid "Create report"
+msgstr "Bericht erstellen"
+
+msgid "Report saved"
+msgstr "Bericht gespeichert"
+
+msgid "Have a look at it, then attach it to a new issue on GitHub (needs an account)."
+msgstr "Schau ihn dir gern an und häng ihn dann an ein neues Issue auf GitHub (Konto nötig)."
+
+msgid "Show in folder"
+msgstr "Im Ordner zeigen"
+
+msgid "Open issue page"
+msgstr "Issue-Seite öffnen"
+
+msgid "No access to {} (receiver or unknown model). For all details run in a terminal: sudo kyxend report"
+msgstr "Kein Zugriff auf {} (Empfänger oder unbekanntes Modell). Für alle Details im Terminal ausführen: sudo kyxend report"
+
+msgid "Could not save the report"
+msgstr "Bericht konnte nicht gespeichert werden"

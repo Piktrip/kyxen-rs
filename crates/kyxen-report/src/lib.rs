@@ -1,15 +1,15 @@
-//! `kyxen-report` — read-only hardware report for Logitech keyboards.
+//! Read-only hardware report for Logitech keyboards.
 //!
 //! For people who want to help add support for their keyboard without
-//! writing code: run it, look at the Markdown file it writes, attach it to
-//! an issue. It only asks the keyboard questions (HID++ getters) and changes
-//! nothing on it.
+//! writing code: Kyxen writes a Markdown file (app: Settings → Help, or
+//! `kyxend report`) to attach to an issue. It only asks the keyboard
+//! questions (HID++ getters) and changes nothing on it.
 
 mod probe;
 mod system;
 
 use std::fmt::Write as _;
-use std::io::{self, BufRead, IsTerminal, Write as _};
+use std::io;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -20,105 +20,42 @@ use kyxen_hidpp::hidraw::Hidraw;
 use probe::HidppInfo;
 use system::{Node, System};
 
-const ISSUE_URL: &str =
+/// Where reports go: a new issue with the keyboard-report template.
+pub const ISSUE_URL: &str =
     "https://github.com/Piktrip/kyxen-rs/issues/new?template=keyboard-report.yml";
 
-struct Text {
-    intro: &'static str,
-    confirm: &'static str,
-    scanning: &'static str,
-    no_access: &'static str,
-    none_found: &'static str,
-    written: &'static str,
-    next: &'static str,
-}
-
-const DE: Text = Text {
-    intro: "Kyxen-Tastaturbericht\n\n\
-        Dieses Programm liest Informationen über deine Logitech-Geräte aus und schreibt\n\
-        sie in eine Textdatei. Es stellt der Tastatur nur Fragen und ändert nichts an ihr:\n\
-        keine Einstellungen, kein Speicher, keine Beleuchtung. Der Bericht enthält keine\n\
-        Seriennummern, Benutzer- oder Rechnernamen; du kannst ihn vor dem Teilen lesen.\n\n\
-        Benutzung auf eigene Gefahr. Kyxen ist ein inoffizielles Hobby-Projekt ohne\n\
-        Verbindung zu Logitech und kommt ohne jede Gewährleistung (GPL-3.0).",
-    confirm: "Weiter mit Enter, abbrechen mit Strg+C … ",
-    scanning: "Suche Logitech-Geräte …",
-    no_access: "Kein Zugriff auf {node}. Starte das Programm mit sudo, dann kann es auch\ndie Tastatur selbst abfragen:  sudo ./kyxen-report",
-    none_found: "Keine Logitech-Geräte gefunden. Ist die Tastatur angesteckt?",
-    written: "Fertig! Der Bericht liegt hier:",
-    next: "Schau ihn dir gern an und häng ihn an ein neues Issue (GitHub-Konto nötig):",
-};
-
-const EN: Text = Text {
-    intro: "Kyxen keyboard report\n\n\
-        This program reads information about your Logitech devices and writes it to a\n\
-        text file. It only asks the keyboard questions and changes nothing on it: no\n\
-        settings, no memory, no lighting. The report contains no serial numbers, user or\n\
-        host names; you can read it before sharing.\n\n\
-        Use at your own risk. Kyxen is an unofficial hobby project, not affiliated with\n\
-        Logitech, and comes without any warranty (GPL-3.0).",
-    confirm: "Press Enter to continue, Ctrl+C to cancel … ",
-    scanning: "Looking for Logitech devices …",
-    no_access: "No access to {node}. Run the program with sudo so it can query the\nkeyboard itself:  sudo ./kyxen-report",
-    none_found: "No Logitech devices found. Is the keyboard plugged in?",
-    written: "Done! The report is here:",
-    next: "Have a look and attach it to a new issue (needs a GitHub account):",
-};
-
-fn text() -> &'static Text {
-    let lang = ["LC_ALL", "LC_MESSAGES", "LANG"]
-        .iter()
-        .filter_map(|v| std::env::var(v).ok())
-        .find(|v| !v.is_empty())
-        .unwrap_or_default();
-    if lang.starts_with("de") { &DE } else { &EN }
-}
-
-/// A probed node: sysfs facts plus what HID++ told us.
-struct Probed {
-    node: Node,
-    hidpp_interface: bool,
-    boot_keyboard: bool,
-    access: Access,
-    devices: Vec<HidppInfo>,
-}
-
-#[derive(PartialEq)]
-enum Access {
-    NotTried,
-    Denied,
-    Error(String),
-    Ok,
-}
-
-fn main() -> Result<()> {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    if args.iter().any(|a| a == "-h" || a == "--help") {
-        println!(
-            "kyxen-report [--yes] [--output FILE]\n\n\
-             Writes a read-only hardware report of your Logitech devices as Markdown.\n\
-             --yes      don't wait for Enter after the notice\n\
-             --output   where to write the report (default: current folder)"
-        );
-        return Ok(());
+/// What the report does and the disclaimer, for the command line.
+pub fn notice(german: bool) -> &'static str {
+    if german {
+        "Kyxen-Tastaturbericht\n\n\
+         Liest Informationen über deine Logitech-Geräte aus und schreibt sie in eine\n\
+         Textdatei. Es stellt der Tastatur nur Fragen und ändert nichts an ihr: keine\n\
+         Einstellungen, kein Speicher, keine Beleuchtung. Der Bericht enthält keine\n\
+         Seriennummern, Benutzer- oder Rechnernamen; du kannst ihn vor dem Teilen lesen.\n\n\
+         Benutzung auf eigene Gefahr. Kyxen ist ein inoffizielles Hobby-Projekt ohne\n\
+         Verbindung zu Logitech und kommt ohne jede Gewährleistung (GPL-3.0)."
+    } else {
+        "Kyxen keyboard report\n\n\
+         Reads information about your Logitech devices and writes it to a text file.\n\
+         It only asks the keyboard questions and changes nothing on it: no settings, no\n\
+         memory, no lighting. The report contains no serial numbers, user or host\n\
+         names; you can read it before sharing.\n\n\
+         Use at your own risk. Kyxen is an unofficial hobby project, not affiliated with\n\
+         Logitech, and comes without any warranty (GPL-3.0)."
     }
-    let yes = args.iter().any(|a| a == "-y" || a == "--yes");
-    let output = args
-        .iter()
-        .position(|a| a == "-o" || a == "--output")
-        .and_then(|i| args.get(i + 1))
-        .map(PathBuf::from);
+}
 
-    let t = text();
-    println!("{}\n", t.intro);
-    if !yes && io::stdin().is_terminal() {
-        print!("{}", t.confirm);
-        io::stdout().flush()?;
-        let mut line = String::new();
-        io::stdin().lock().read_line(&mut line)?;
-    }
+/// Everything collected, ready to render.
+#[derive(Debug)]
+pub struct Report {
+    sys: System,
+    probed: Vec<Probed>,
+}
 
-    println!("\n{}", t.scanning);
+/// Collect the report: sysfs facts for every Logitech HID node and HID++
+/// answers from every interface we may open. Takes a few seconds when a
+/// receiver is present (it asks each of its six slots).
+pub fn collect() -> Report {
     let sys = system::system();
     let mut probed = Vec::new();
     for node in system::nodes(Path::new("/sys/class/hidraw")) {
@@ -133,11 +70,6 @@ fn main() -> Result<()> {
         if hidpp_interface {
             match Hidraw::open(&p.node.hidraw) {
                 Err(e) if e.kind() == io::ErrorKind::PermissionDenied => {
-                    println!(
-                        "{}",
-                        t.no_access
-                            .replace("{node}", &p.node.hidraw.display().to_string())
-                    );
                     p.access = Access::Denied;
                 }
                 Err(e) => p.access = Access::Error(e.to_string()),
@@ -152,25 +84,80 @@ fn main() -> Result<()> {
                 }
             }
         }
-        print_summary(&p);
         probed.push(p);
     }
-    if probed.is_empty() {
-        println!("{}", t.none_found);
-    }
-
-    let report = render(&sys, &probed);
-    let path = write_report(output, &report)?;
-    println!(
-        "\n{}\n  {}\n\n{}\n  {ISSUE_URL}",
-        t.written,
-        path.display(),
-        t.next
-    );
-    Ok(())
+    Report { sys, probed }
 }
 
-fn print_summary(p: &Probed) {
+impl Report {
+    /// The report as Markdown.
+    pub fn markdown(&self) -> String {
+        render(&self.sys, &self.probed)
+    }
+
+    /// No Logitech device found at all.
+    pub fn is_empty(&self) -> bool {
+        self.probed.is_empty()
+    }
+
+    /// HID++ nodes we were not allowed to open (no udev rule; `sudo` helps).
+    pub fn denied(&self) -> Vec<PathBuf> {
+        self.probed
+            .iter()
+            .filter(|p| p.access == Access::Denied)
+            .map(|p| p.node.hidraw.clone())
+            .collect()
+    }
+
+    /// One line per node: `/dev/hidrawN  046d:pppp  name  →  device (n features)`.
+    pub fn summary(&self) -> Vec<String> {
+        self.probed.iter().map(summary_line).collect()
+    }
+}
+
+/// `kyxen-report-YYYY-MM-DD.md`
+pub fn file_name() -> String {
+    format!("kyxen-report-{}.md", today())
+}
+
+/// Write `report` to the first of `candidates` that works and hand the file
+/// to the real user when running under sudo. Returns the absolute path.
+pub fn write(report: &str, candidates: &[PathBuf]) -> Result<PathBuf> {
+    let mut last_err = None;
+    for path in candidates {
+        match std::fs::write(path, report) {
+            Ok(()) => {
+                give_to_sudo_user(path);
+                return std::path::absolute(path).context("resolve report path");
+            }
+            Err(e) => last_err = Some(e),
+        }
+    }
+    Err(last_err.map_or_else(
+        || anyhow::anyhow!("no place to write the report"),
+        Into::into,
+    ))
+}
+
+/// A probed node: sysfs facts plus what HID++ told us.
+#[derive(Debug)]
+struct Probed {
+    node: Node,
+    hidpp_interface: bool,
+    boot_keyboard: bool,
+    access: Access,
+    devices: Vec<HidppInfo>,
+}
+
+#[derive(Debug, PartialEq)]
+enum Access {
+    NotTried,
+    Denied,
+    Error(String),
+    Ok,
+}
+
+fn summary_line(p: &Probed) -> String {
     let mut line = format!(
         "  {}  046d:{:04x}  {}",
         p.node.hidraw.display(),
@@ -182,7 +169,7 @@ fn print_summary(p: &Probed) {
             let _ = write!(line, "  →  {name} ({} features)", d.features.len());
         }
     }
-    println!("{line}");
+    line
 }
 
 // ── report ───────────────────────────────────────────────────────────────
@@ -285,7 +272,7 @@ fn render(sys: &System, probed: &[Probed]) -> String {
     let _ = writeln!(w, "# Kyxen keyboard report\n");
     let _ = writeln!(
         w,
-        "Generated by kyxen-report {} on {} (UTC). Read-only: the program only sent the \
+        "Generated by Kyxen {} on {} (UTC). Read-only: the program only sent the \
          HID++ getters listed at the end and changed nothing on the devices. No serial \
          numbers, unit ids, user or host names are included.\n",
         env!("CARGO_PKG_VERSION"),
@@ -494,30 +481,6 @@ fn civil(days: i64) -> (i64, u32, u32) {
     let d = (doy - (153 * mp + 2) / 5 + 1) as u32;
     let m = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
     (yoe + era * 400 + i64::from(m <= 2), m, d)
-}
-
-/// Write the report next to the user (current folder, else /tmp) and hand
-/// it to the real user when run with sudo.
-fn write_report(output: Option<PathBuf>, report: &str) -> Result<PathBuf> {
-    let name = format!("kyxen-report-{}.md", today());
-    let candidates = match output {
-        Some(p) => vec![p],
-        None => vec![PathBuf::from(&name), std::env::temp_dir().join(&name)],
-    };
-    let mut last_err = None;
-    for path in candidates {
-        match std::fs::write(&path, report) {
-            Ok(()) => {
-                give_to_sudo_user(&path);
-                return std::path::absolute(&path).context("resolve report path");
-            }
-            Err(e) => last_err = Some(e),
-        }
-    }
-    Err(last_err.map_or_else(
-        || anyhow::anyhow!("no place to write the report"),
-        Into::into,
-    ))
 }
 
 fn give_to_sudo_user(path: &Path) {

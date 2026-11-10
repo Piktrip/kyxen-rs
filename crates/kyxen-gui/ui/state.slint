@@ -123,4 +123,12 @@ export global Ui {
     in property <bool> tray-autostart;
     callback set-tray(bool);
     callback set-autostart(bool);
+
+    // ── keyboard report ─────────────────────────────────────────────────
+    in property <bool> report-busy;
+    in property <string> report-path;
+    in property <string> report-note;
+    callback create-report();
+    callback show-report();
+    callback open-issue();
 }

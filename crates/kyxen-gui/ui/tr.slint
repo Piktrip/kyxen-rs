@@ -37,4 +37,8 @@ export global Tr {
     public pure function new-profile(n: int) -> string {
         return @tr("Profile {}", n);
     }
+    public pure function report-no-access(nodes: string) -> string {
+        return @tr("No access to {} (receiver or unknown model). For all details run in a terminal: sudo kyxend report", nodes);
+    }
+    out property <string> report-failed: @tr("Could not save the report");
 }

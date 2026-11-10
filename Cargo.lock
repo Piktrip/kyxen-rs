@@ -2553,6 +2553,7 @@ version = "0.1.0"
 dependencies = [
  "ksni",
  "kyxen-core",
+ "kyxen-report",
  "png 0.17.16",
  "slint",
  "slint-build",
@@ -2592,6 +2593,7 @@ dependencies = [
  "evdev",
  "kyxen-core",
  "kyxen-hidpp",
+ "kyxen-report",
  "serde",
  "serde_json",
  "signal-hook",

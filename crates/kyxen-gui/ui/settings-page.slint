@@ -2,7 +2,7 @@ import { LineEdit, ComboBox, ScrollView } from "std-widgets.slint";
 import { Theme } from "theme.slint";
 import { Ui } from "state.slint";
 import { Tr } from "tr.slint";
-import { Button, ButtonKind, Card, Chip, Label, SectionTitle, Toggle } from "widgets.slint";
+import { Button, ButtonKind, Card, Chip, Icon, Label, SectionTitle, Toggle } from "widgets.slint";
 
 component Row inherits HorizontalLayout {
     in property <string> title;
@@ -194,6 +194,99 @@ export component SettingsPage inherits ScrollView {
                             y: (parent.height - self.height) / 2;
                             checked: Ui.tray-autostart;
                             toggled(on) => { Ui.set-autostart(on); }
+                        }
+                    }
+                }
+            }
+        }
+
+        Card {
+            VerticalLayout {
+                padding: 24px;
+                spacing: 20px;
+                SectionTitle {
+                    text: @tr("HELP");
+                }
+                Row {
+                    title: @tr("Keyboard report");
+                    hint: @tr("Reads what your keyboard can do and saves it as a file, so support for it can be added. Changes nothing on the keyboard.");
+                    HorizontalLayout {
+                        alignment: start;
+                        VerticalLayout {
+                            alignment: center;
+                            Button {
+                            has-icon: true;
+                            icon: @image-url("icons/report.svg");
+                            text: Ui.report-busy ? @tr("Creating …") : @tr("Create report");
+                            enabled: !Ui.report-busy;
+                            clicked => { Ui.create-report(); }
+                            }
+                        }
+                    }
+                }
+                if Ui.report-path != "": Rectangle {
+                    border-radius: Theme.radius;
+                    background: Theme.accent-soft;
+                    border-width: 1px;
+                    border-color: Theme.accent-line;
+                    VerticalLayout {
+                        padding: 16px;
+                        spacing: 10px;
+                        HorizontalLayout {
+                            spacing: 10px;
+                            Icon {
+                                source: @image-url("icons/check.svg");
+                                tint: Theme.accent;
+                                y: 1px;
+                            }
+                            VerticalLayout {
+                                spacing: 4px;
+                                Text {
+                                    text: @tr("Report saved");
+                                    font-family: Theme.font;
+                                    font-size: Theme.font-md;
+                                    font-weight: 600;
+                                    color: Theme.text;
+                                }
+                                Text {
+                                    text: Ui.report-path;
+                                    font-family: Theme.font;
+                                    font-size: Theme.font-sm;
+                                    color: Theme.text-dim;
+                                    wrap: word-wrap;
+                                }
+                                if Ui.report-note != "": Text {
+                                    text: Ui.report-note;
+                                    font-family: Theme.font;
+                                    font-size: Theme.font-sm;
+                                    color: #ffb340;
+                                    wrap: word-wrap;
+                                }
+                                Text {
+                                    text: @tr("Have a look at it, then attach it to a new issue on GitHub (needs an account).");
+                                    font-family: Theme.font;
+                                    font-size: Theme.font-sm;
+                                    color: Theme.text-faint;
+                                    wrap: word-wrap;
+                                }
+                            }
+                        }
+                        HorizontalLayout {
+                            alignment: start;
+                            spacing: 8px;
+                            padding-left: 28px;
+                            Button {
+                                has-icon: true;
+                                icon: @image-url("icons/folder.svg");
+                                text: @tr("Show in folder");
+                                clicked => { Ui.show-report(); }
+                            }
+                            Button {
+                                has-icon: true;
+                                icon: @image-url("icons/external.svg");
+                                text: @tr("Open issue page");
+                                clicked => { Ui.open-issue(); }
+                            }
                         }
                     }
                 }

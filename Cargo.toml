@@ -13,6 +13,7 @@ authors = ["Piktrip", "Wade Quinn (original Kyxen)"]
 [workspace.dependencies]
 kyxen-hidpp = { path = "crates/kyxen-hidpp" }
 kyxen-core = { path = "crates/kyxen-core" }
+kyxen-report = { path = "crates/kyxen-report" }
 
 anyhow = "1.0"
 clap = { version = "4.6", features = ["derive"] }

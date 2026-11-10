@@ -5,7 +5,7 @@
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::{OnceLock, mpsc};
 use std::thread;
@@ -200,6 +200,53 @@ fn demo_animation() -> AnimationConfig {
             slide(Rgb(0xbf, 0x5a, 0xf2)),
         ],
     }
+}
+
+/// The user's download folder (`XDG_DOWNLOAD_DIR`), else the home folder.
+fn download_dir() -> PathBuf {
+    let home = std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_default();
+    let config =
+        std::env::var_os("XDG_CONFIG_HOME").map_or_else(|| home.join(".config"), PathBuf::from);
+    std::fs::read_to_string(config.join("user-dirs.dirs"))
+        .ok()
+        .and_then(|s| {
+            s.lines()
+                .find_map(|l| l.strip_prefix("XDG_DOWNLOAD_DIR="))
+                .map(|v| {
+                    v.trim_matches('"')
+                        .replace("$HOME", &home.to_string_lossy())
+                })
+        })
+        .map(PathBuf::from)
+        .filter(|p| p.is_dir())
+        .unwrap_or(home)
+}
+
+/// `file://` URI with the path percent-encoded.
+fn file_uri(path: &Path) -> String {
+    use std::fmt::Write as _;
+    let mut uri = String::from("file://");
+    for b in path.as_os_str().as_encoded_bytes() {
+        if b.is_ascii_alphanumeric() || b"/-._~".contains(b) {
+            uri.push(char::from(*b));
+        } else {
+            let _ = write!(uri, "%{b:02X}");
+        }
+    }
+    uri
+}
+
+/// Run a desktop helper (`xdg-open`, …) without blocking the UI; `true` if
+/// it exited successfully.
+fn run_helper(program: &str, args: &[&str]) -> bool {
+    std::process::Command::new(program)
+        .args(args)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .is_ok_and(|s| s.success())
 }
 
 /// Send a request to the daemon off the UI thread.
@@ -1462,6 +1509,70 @@ pub fn connect(ui: &AppWindow, app: &Shared) {
             App::mark_dirty(&rc, true);
         });
     }
+    g.on_create_report(with!(app, |a| {
+        let ui = a.ui();
+        let g = ui.global::<Ui>();
+        if g.get_report_busy() {
+            return;
+        }
+        g.set_report_busy(true);
+        let weak = a.ui.clone();
+        thread::spawn(move || {
+            let report = kyxen_report::collect();
+            let denied: Vec<String> = report
+                .denied()
+                .iter()
+                .map(|p| p.display().to_string())
+                .collect();
+            let name = kyxen_report::file_name();
+            let written = kyxen_report::write(
+                &report.markdown(),
+                &[download_dir().join(&name), std::env::temp_dir().join(&name)],
+            );
+            let _ = weak.upgrade_in_event_loop(move |w| {
+                let (g, tr) = (w.global::<Ui>(), w.global::<Tr>());
+                g.set_report_busy(false);
+                match written {
+                    Ok(path) => {
+                        g.set_report_path(path.display().to_string().into());
+                        g.set_report_note(if denied.is_empty() {
+                            SharedString::new()
+                        } else {
+                            tr.invoke_report_no_access(denied.join(", ").into())
+                        });
+                    }
+                    Err(e) => {
+                        tracing::warn!("keyboard report: {e:#}");
+                        g.set_toast(tr.get_report_failed());
+                    }
+                }
+            });
+        });
+    }));
+    g.on_show_report(with!(app, |a| {
+        let path = PathBuf::from(a.ui().global::<Ui>().get_report_path().as_str());
+        thread::spawn(move || {
+            // highlights the file in Dolphin and other file managers
+            let shown = run_helper(
+                "dbus-send",
+                &[
+                    "--session",
+                    "--dest=org.freedesktop.FileManager1",
+                    "--type=method_call",
+                    "/org/freedesktop/FileManager1",
+                    "org.freedesktop.FileManager1.ShowItems",
+                    &format!("array:string:{}", file_uri(&path)),
+                    "string:",
+                ],
+            );
+            if !shown && let Some(dir) = path.parent() {
+                run_helper("xdg-open", &[&dir.to_string_lossy()]);
+            }
+        });
+    }));
+    g.on_open_issue(|| {
+        thread::spawn(|| run_helper("xdg-open", &[kyxen_report::ISSUE_URL]));
+    });
 }
 
 /// Poll the daemon in the background and feed results to the UI thread.
@@ -1489,6 +1600,15 @@ pub fn start_status_polling(app: &Shared) -> Timer {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn file_uris_are_encoded() {
+        assert_eq!(
+            file_uri(Path::new("/home/a b/Downloads/kyxen-report.md")),
+            "file:///home/a%20b/Downloads/kyxen-report.md"
+        );
+        assert_eq!(file_uri(Path::new("/tmp/ä")), "file:///tmp/%C3%A4");
+    }
 
     #[test]
     fn bursts_keep_the_last_switch_in_order() {

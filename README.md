@@ -22,21 +22,20 @@ The G915 over its LIGHTSPEED receiver is not supported yet.
 
 ## Help support your keyboard
 
-You don't need to write code to help: `kyxen-report` collects what we need to
-know about a keyboard into one text file.
+You don't need to write code to help: Kyxen can write a report with what we
+need to know about a keyboard.
 
-1. Get `kyxen-report` (from the releases page once there is one, or build it:
-   `cargo build --release -p kyxen-report`).
-2. Run it in a terminal: `./kyxen-report`. If it says it has no access, run it
-   with `sudo ./kyxen-report`.
-3. It writes `kyxen-report-<date>.md` to the current folder. Read it if you
-   like, then attach it to a
+1. In the app: **Settings → Help → Create report**. It saves
+   `kyxen-report-<date>.md` to your Downloads folder.
+   In a terminal: `kyxend report` (writes to the current folder).
+2. If it says it has no access to a device (a receiver, or a model Kyxen
+   doesn't know yet), run `sudo kyxend report` for the full details.
+3. Read the file if you like, then attach it to a
    [keyboard report issue](https://github.com/Piktrip/kyxen-rs/issues/new?template=keyboard-report.yml).
 
-The tool is read-only: it only sends HID++ *get* requests (listed at the end of
-every report) and changes nothing on the keyboard. The report contains no
-serial numbers, unit ids, user or host names. Running it is still at your own
-risk.
+The report is read-only: it only sends HID++ *get* requests (listed at the end
+of every report) and changes nothing on the keyboard. It contains no serial
+numbers, unit ids, user or host names. Running it is still at your own risk.
 
 ## What's different from Python Kyxen
 
@@ -108,6 +107,7 @@ kyxend probe        # show the keyboard and its HID++ features (read-only)
 kyxend status       # ask the running daemon
 kyxend switch NAME  # switch profile
 kyxend reload       # reload config files
+kyxend report       # read-only hardware report for a support request
 kyxend restore [N]  # put the keyboard back into onboard mode on profile N
 ```
 
@@ -179,7 +179,7 @@ animations in `[[lighting.animation.slides]]` with `keys`, `hold`,
 | `kyxen-core` | Config files, text layouts, macro translation, key geometry, lighting effects. No I/O. |
 | `kyxend` | The daemon and CLI. |
 | `kyxen-gui` | The `kyxen` app (Slint) and tray icon. |
-| `kyxen-report` | Read-only hardware report for new keyboards. |
+| `kyxen-report` | Read-only hardware report (app: Settings → Help, `kyxend report`). |
 
 ```bash
 cargo test --workspace
