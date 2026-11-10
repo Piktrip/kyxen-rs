@@ -35,10 +35,13 @@ pub fn entry(gui: &Path, tray: bool) -> String {
         (
             "Kyxen (Tray)",
             format!("{} --tray", gui.display()),
-            "X-GNOME-Autostart-enabled=true\nNoDisplay=true\n",
+            // starts hidden, so no window could ever end launch feedback:
+            // don't ask the desktop for any (it would sit in the task manager)
+            "X-GNOME-Autostart-enabled=true\nNoDisplay=true\nStartupNotify=false\n",
         )
     } else {
-        ("Kyxen", gui.display().to_string(), "")
+        // the app presents the launch's activation token (see kyxen-gui)
+        ("Kyxen", gui.display().to_string(), "StartupNotify=true\n")
     };
     format!(
         "[Desktop Entry]\n\
