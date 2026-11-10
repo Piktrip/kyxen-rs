@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/kyxen-hidpp", "crates/kyxen-core", "crates/kyxend", "crates/kyxen-gui"]
+members = ["crates/kyxen-hidpp", "crates/kyxen-core", "crates/kyxend", "crates/kyxen-gui", "crates/kyxen-report"]
 
 [workspace.package]
 version = "0.1.0"

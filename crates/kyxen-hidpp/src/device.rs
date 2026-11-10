@@ -3,7 +3,7 @@ use std::io;
 use std::time::{Duration, Instant};
 
 use crate::error::{Error, Result};
-use crate::report::{self, Message, Notification, ReportKind, SW_ID};
+use crate::report::{self, Message, Notification, ReportKind, SW_ID, WIRED_DEVICE};
 
 /// Default time to wait for a response.
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(3);
@@ -28,6 +28,8 @@ pub struct HidppDevice<T> {
     features: HashMap<u16, u8>,
     pending: VecDeque<Notification>,
     timeout: Duration,
+    device: u8,
+    sw_id: u8,
 }
 
 impl<T: Transport> HidppDevice<T> {
@@ -37,7 +39,25 @@ impl<T: Transport> HidppDevice<T> {
             features: HashMap::new(),
             pending: VecDeque::new(),
             timeout: DEFAULT_TIMEOUT,
+            device: WIRED_DEVICE,
+            sw_id: SW_ID,
         }
+    }
+
+    /// Address device index `device` instead of the wired keyboard (`0xff`):
+    /// `1`–`6` are the devices paired to a receiver.
+    #[must_use]
+    pub fn with_device(mut self, device: u8) -> Self {
+        self.device = device;
+        self
+    }
+
+    /// Stamp requests with software id `sw_id` (1–15) instead of [`SW_ID`],
+    /// so another program on the same node (the daemon) ignores our answers.
+    #[must_use]
+    pub fn with_sw_id(mut self, sw_id: u8) -> Self {
+        self.sw_id = sw_id & 0x0f;
+        self
     }
 
     #[must_use]
@@ -67,8 +87,14 @@ impl<T: Transport> HidppDevice<T> {
         function: u8,
         params: &[u8],
     ) -> Result<Vec<u8>> {
-        self.transport
-            .send(&report::request(kind, feature, function, params))?;
+        self.transport.send(&report::request_to(
+            kind,
+            self.device,
+            self.sw_id,
+            feature,
+            function,
+            params,
+        ))?;
         let deadline = Instant::now() + self.timeout;
         let mut buf = [0u8; 64];
         loop {
@@ -80,13 +106,16 @@ impl<T: Transport> HidppDevice<T> {
             if n == 0 {
                 return Err(Error::Timeout { feature, function });
             }
+            if buf[1] != self.device {
+                continue; // another device behind the same receiver
+            }
             match Message::parse(&buf[..n]) {
                 Some(Message::Response {
                     feature: f,
                     function: func,
                     sw_id,
                     payload,
-                }) if f == feature && func == function && sw_id == SW_ID => {
+                }) if f == feature && func == function && sw_id == self.sw_id => {
                     return Ok(payload);
                 }
                 Some(Message::Error {

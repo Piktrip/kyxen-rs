@@ -2574,6 +2574,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "kyxen-report"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "kyxen-core",
+ "kyxen-hidpp",
+]
+
+[[package]]
 name = "kyxend"
 version = "0.1.0"
 dependencies = [

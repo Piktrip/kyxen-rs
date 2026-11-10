@@ -211,6 +211,13 @@ export component SettingsPage inherits ScrollView {
                     text: @tr("kyxen {} · GPL-3.0 · based on Kyxen by Wade Quinn", Ui.version);
                     font-size: Theme.font-md;
                 }
+                Text {
+                    text: @tr("Unofficial project, not affiliated with Logitech. Use at your own risk, without any warranty.");
+                    font-family: Theme.font;
+                    font-size: Theme.font-sm;
+                    color: Theme.text-faint;
+                    wrap: word-wrap;
+                }
             }
         }
     }

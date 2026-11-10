@@ -353,3 +353,6 @@ msgstr "·  Makro"
 
 msgid "“{}” deleted"
 msgstr "„{}“ gelöscht"
+
+msgid "Unofficial project, not affiliated with Logitech. Use at your own risk, without any warranty."
+msgstr "Inoffizielles Projekt, keine Verbindung zu Logitech. Benutzung auf eigene Gefahr, ohne Gewährleistung."

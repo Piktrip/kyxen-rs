@@ -1,0 +1,20 @@
+[package]
+name = "kyxen-report"
+description = "Read-only hardware report for Logitech keyboards, to help add support to Kyxen"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+kyxen-core.workspace = true
+kyxen-hidpp.workspace = true
+
+[dev-dependencies]
+kyxen-hidpp = { workspace = true, features = ["mock"] }
+
+[lints]
+workspace = true

@@ -14,6 +14,30 @@ No Windows software, no cloud account, no Python runtime: one daemon binary.
 
 The G915 over its LIGHTSPEED receiver is not supported yet.
 
+> **Use at your own risk.** Kyxen is an unofficial hobby project, not affiliated
+> with or endorsed by Logitech, and comes without any warranty (see
+> [Disclaimer](#disclaimer)). On the G815 it writes a G-key remap to the
+> keyboard's flash memory (a backup is kept); on the G915 nothing is written
+> to flash.
+
+## Help support your keyboard
+
+You don't need to write code to help: `kyxen-report` collects what we need to
+know about a keyboard into one text file.
+
+1. Get `kyxen-report` (from the releases page once there is one, or build it:
+   `cargo build --release -p kyxen-report`).
+2. Run it in a terminal: `./kyxen-report`. If it says it has no access, run it
+   with `sudo ./kyxen-report`.
+3. It writes `kyxen-report-<date>.md` to the current folder. Read it if you
+   like, then attach it to a
+   [keyboard report issue](https://github.com/Piktrip/kyxen-rs/issues/new?template=keyboard-report.yml).
+
+The tool is read-only: it only sends HID++ *get* requests (listed at the end of
+every report) and changes nothing on the keyboard. The report contains no
+serial numbers, unit ids, user or host names. Running it is still at your own
+risk.
+
 ## What's different from Python Kyxen
 
 - **Feature indices and sector sizes are read from the keyboard**, not hardcoded — they differ between models and firmware (e.g. per-key lighting is `0x10` on the G815, `0x0a` on a G915).
@@ -155,11 +179,22 @@ animations in `[[lighting.animation.slides]]` with `keys`, `hold`,
 | `kyxen-core` | Config files, text layouts, macro translation, key geometry, lighting effects. No I/O. |
 | `kyxend` | The daemon and CLI. |
 | `kyxen-gui` | The `kyxen` app (Slint) and tray icon. |
+| `kyxen-report` | Read-only hardware report for new keyboards. |
 
 ```bash
 cargo test --workspace
 cargo clippy --workspace --all-targets
 ```
+
+## Disclaimer
+
+Kyxen is provided "as is", without warranty of any kind, as stated in
+sections 15 and 16 of the GPL-3.0. You use it at your own risk; the authors
+are not liable for any damage to hardware, data or anything else.
+
+Kyxen is not affiliated with, endorsed by or supported by Logitech.
+Logitech, G815, G915 and LIGHTSPEED are trademarks of Logitech. The protocol
+knowledge comes from observing the devices and from the original Kyxen.
 
 ## Credits and licence
 

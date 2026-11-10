@@ -28,15 +28,29 @@ pub enum ReportKind {
     Long,
 }
 
-/// Build a request report for `feature` (runtime index) and `function`.
+/// Build a request report for `feature` (runtime index) and `function`,
+/// addressed to a wired keyboard with our software id.
 pub fn request(kind: ReportKind, feature: u8, function: u8, params: &[u8]) -> Vec<u8> {
+    request_to(kind, WIRED_DEVICE, SW_ID, feature, function, params)
+}
+
+/// Build a request for device index `device` (`0xff` wired or receiver,
+/// `1`–`6` a device paired to a receiver) with software id `sw_id`.
+pub fn request_to(
+    kind: ReportKind,
+    device: u8,
+    sw_id: u8,
+    feature: u8,
+    function: u8,
+    params: &[u8],
+) -> Vec<u8> {
     let (id, len) = match kind {
         ReportKind::Short => (SHORT_ID, SHORT_LEN),
         ReportKind::Long => (LONG_ID, LONG_LEN),
     };
     debug_assert!(params.len() <= len - 4, "too many parameters for report");
     let mut pkt = vec![0u8; len];
-    pkt[..4].copy_from_slice(&[id, WIRED_DEVICE, feature, (function << 4) | SW_ID]);
+    pkt[..4].copy_from_slice(&[id, device, feature, (function << 4) | (sw_id & 0x0f)]);
     let n = params.len().min(len - 4);
     pkt[4..4 + n].copy_from_slice(&params[..n]);
     pkt

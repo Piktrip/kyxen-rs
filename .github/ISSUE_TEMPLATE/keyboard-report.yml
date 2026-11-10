@@ -1,0 +1,49 @@
+name: Keyboard report
+description: Share what kyxen-report found about your keyboard, so it can be supported.
+title: "Keyboard report: <model>"
+labels: ["keyboard report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping! Run `kyxen-report` (see the README, section
+        "Help support your keyboard") and attach the `kyxen-report-<date>.md`
+        file it writes. The report is read-only and contains no serial
+        numbers, user or host names — have a look before you upload it.
+  - type: input
+    id: model
+    attributes:
+      label: Keyboard model
+      placeholder: e.g. Logitech G915 TKL, G815, G513
+    validations:
+      required: true
+  - type: dropdown
+    id: connection
+    attributes:
+      label: How is it connected?
+      options:
+        - USB cable
+        - LIGHTSPEED receiver
+        - Bluetooth
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: Report
+      description: Drag the kyxen-report-….md file here, or paste its contents.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else?
+      description: What works, what doesn't, which keys or lighting you'd like to use.
+  - type: checkboxes
+    id: risk
+    attributes:
+      label: Disclaimer
+      options:
+        - label: I understand that Kyxen is an unofficial project, not affiliated with Logitech, and that I use it at my own risk.
+          required: true
