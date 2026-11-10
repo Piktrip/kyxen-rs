@@ -1,0 +1,24 @@
+[package]
+name = "kyxen-hidpp"
+description = "Logitech HID++ 2.0 protocol for gaming keyboards: feature lookup, onboard profiles, per-key lighting, G/M-key notifications"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[features]
+# In-memory fake keyboard for tests in this and dependent crates.
+mock = []
+
+[dependencies]
+rustix.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+kyxen-hidpp = { path = ".", features = ["mock"] }
+
+[lints]
+workspace = true
