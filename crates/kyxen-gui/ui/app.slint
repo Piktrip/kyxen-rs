@@ -228,8 +228,10 @@ export component AppWindow inherits Window {
                 padding-bottom: 20px;
                 spacing: 20px;
 
+                // anchored left so the navigation never moves when the side
+                // panel comes and goes (it is hidden on the settings tab)
                 HorizontalLayout {
-                    alignment: center;
+                    alignment: start;
                     Tabs {
                         items: [
                             { icon: @image-url("icons/keyboard.svg"), label: @tr("Keys") },
@@ -241,7 +243,7 @@ export component AppWindow inherits Window {
                 }
 
                 if Ui.tab == 1: HorizontalLayout {
-                    alignment: center;
+                    alignment: start;
                     if Ui.l-effect == 0: Toolbar { }
                     if Ui.l-effect != 0: Rectangle {
                         height: 52px;
