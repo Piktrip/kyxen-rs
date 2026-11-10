@@ -308,7 +308,10 @@ impl App {
         if self.tray.is_some() {
             return true;
         }
-        match crate::tray::KyxenTray::new(self.ui.clone()).spawn() {
+        let started = Instant::now();
+        let spawned = crate::tray::KyxenTray::new(self.ui.clone()).spawn();
+        tracing::debug!("tray registration took {:?}", started.elapsed());
+        match spawned {
             Ok(handle) => {
                 self.tray = Some(handle);
                 self.sync_tray();

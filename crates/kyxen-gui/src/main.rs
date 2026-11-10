@@ -94,6 +94,27 @@ pub fn present(w: &AppWindow) {
     }
 }
 
+/// Slint creates every window's surface when the event loop starts, even one
+/// that was never shown. On Wayland that is an empty toplevel, which Plasma
+/// lists as an open "Kyxen" task that does nothing when clicked. Once it
+/// exists, destroy it (hiding does that on Wayland; nothing is drawn between
+/// the two calls). [`present`] creates a fresh one later.
+fn drop_hidden_surface(window: slint::Weak<AppWindow>, tries: u32) {
+    use slint::winit_030::WinitWindowAccessor;
+    Timer::single_shot(Duration::from_millis(25), move || {
+        let Some(w) = window.upgrade() else { return };
+        if w.window().is_visible() {
+            return; // opened in the meantime
+        }
+        if w.window().has_winit_window() {
+            let _ = w.show();
+            let _ = w.hide();
+        } else if tries > 0 {
+            drop_hidden_surface(window, tries - 1);
+        }
+    });
+}
+
 fn main() -> Result<(), slint::PlatformError> {
     // before anything else: removing it from the environment is only sound
     // while we are single-threaded
@@ -181,7 +202,9 @@ fn main() -> Result<(), slint::PlatformError> {
             slint::CloseRequestResponse::HideWindow
         });
     }
-    if !(has_tray && start_hidden) {
+    if has_tray && start_hidden {
+        drop_hidden_surface(window.as_weak(), 80);
+    } else {
         window.show()?;
         if let Some(token) = launch_token {
             // ends the launcher's feedback and gives the window focus
