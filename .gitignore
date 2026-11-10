@@ -2,3 +2,6 @@
 **/*.rs.bk
 .idea/
 .vscode/
+
+# kyxen-report output
+kyxen-report-*.md

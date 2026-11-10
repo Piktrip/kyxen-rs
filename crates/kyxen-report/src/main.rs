@@ -333,33 +333,7 @@ fn render(sys: &System, probed: &[Probed]) -> String {
     let _ = writeln!(w);
 
     for p in probed.iter().filter(|p| p.hidpp_interface) {
-        let _ = writeln!(
-            w,
-            "## {} (046d:{:04x}, interface {})\n",
-            p.node.hidraw.display(),
-            p.node.product,
-            p.node.interface.map_or("?".into(), |i| i.to_string())
-        );
-        match &p.access {
-            Access::Denied => {
-                let _ = writeln!(
-                    w,
-                    "No permission to open the node; run with sudo for HID++ details.\n"
-                );
-            }
-            Access::Error(e) => {
-                let _ = writeln!(w, "Could not open the node: {e}\n");
-            }
-            Access::NotTried => {}
-            Access::Ok if p.devices.is_empty() => {
-                let _ = writeln!(w, "No HID++ answer on this interface.\n");
-            }
-            Access::Ok => {
-                for d in &p.devices {
-                    render_device(w, d);
-                }
-            }
-        }
+        render_node(w, p);
     }
 
     let _ = writeln!(w, "## Report descriptors\n");
@@ -385,12 +359,47 @@ fn render(sys: &System, probed: &[Probed]) -> String {
     s
 }
 
+/// The HID++ section of one interface.
+fn render_node(w: &mut String, p: &Probed) {
+    let _ = writeln!(
+        w,
+        "## {} (046d:{:04x}, interface {})\n",
+        p.node.hidraw.display(),
+        p.node.product,
+        p.node.interface.map_or("?".into(), |i| i.to_string())
+    );
+    match &p.access {
+        Access::Denied => {
+            let _ = writeln!(
+                w,
+                "No permission to open the node; run with sudo for HID++ details.\n"
+            );
+        }
+        Access::Error(e) => {
+            let _ = writeln!(w, "Could not open the node: {e}\n");
+        }
+        Access::NotTried => {}
+        Access::Ok if p.devices.is_empty() => {
+            let _ = writeln!(w, "No HID++ answer on this interface.\n");
+        }
+        Access::Ok => {
+            for d in &p.devices {
+                render_device(w, d);
+            }
+            if p.devices.len() == 1 && p.devices[0].protocol.is_none() {
+                let _ = writeln!(
+                    w,
+                    "No paired device answered on indices 1–6 (switched off, asleep, \
+                     or connected by cable right now).\n"
+                );
+            }
+        }
+    }
+}
+
 fn render_device(w: &mut String, d: &HidppInfo) {
     let Some((major, minor)) = d.protocol else {
-        let _ = writeln!(
-            w,
-            "### Device index 0xff: HID++ 1.0 (receiver)\n\nPaired devices that answered are listed below.\n"
-        );
+        let _ = writeln!(w, "### Device index 0xff: HID++ 1.0 (receiver)\n");
         return;
     };
     let _ = writeln!(
