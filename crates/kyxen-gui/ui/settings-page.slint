@@ -1,0 +1,151 @@
+import { LineEdit, ComboBox } from "std-widgets.slint";
+import { Theme } from "theme.slint";
+import { Ui } from "state.slint";
+import { Button, ButtonKind, Card, Chip, Label, SectionTitle } from "widgets.slint";
+
+component Row inherits HorizontalLayout {
+    in property <string> title;
+    in property <string> hint;
+    spacing: 24px;
+    VerticalLayout {
+        width: 220px;
+        alignment: center;
+        spacing: 3px;
+        Text {
+            text: title;
+            font-family: Theme.font;
+            font-size: Theme.font-md;
+            font-weight: 600;
+            color: Theme.text;
+        }
+        if hint != "": Text {
+            text: hint;
+            font-family: Theme.font;
+            font-size: Theme.font-sm;
+            color: Theme.text-faint;
+            wrap: word-wrap;
+        }
+    }
+    @children
+}
+
+export component SettingsPage inherits HorizontalLayout {
+    alignment: center;
+    VerticalLayout {
+        max-width: 760px;
+        horizontal-stretch: 1;
+        spacing: 18px;
+        alignment: start;
+
+        Card {
+            VerticalLayout {
+                padding: 24px;
+                spacing: 20px;
+                SectionTitle {
+                    text: "PROFIL";
+                }
+                Row {
+                    title: "Name";
+                    LineEdit {
+                        font-size: Theme.font-md;
+                        text <=> Ui.p-name;
+                        edited(t) => { Ui.rename(t); }
+                    }
+                }
+                Row {
+                    title: "Farbe";
+                    hint: "Erkennungsfarbe in der Liste";
+                    HorizontalLayout {
+                        spacing: 8px;
+                        alignment: start;
+                        for c in Ui.palette: Rectangle {
+                            width: 30px;
+                            height: 30px;
+                            y: (parent.height - self.height) / 2;
+                            border-radius: 15px;
+                            background: c;
+                            border-width: Ui.profiles[Ui.current-profile].color == c ? 3px : (sw.has-hover ? 2px : 0px);
+                            border-color: #ffffff;
+                            sw := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => { Ui.set-profile-color(c); }
+                            }
+                        }
+                    }
+                }
+                Row {
+                    title: "M-Taste";
+                    hint: "Taste auf der Tastatur, die dieses Profil aktiviert";
+                    HorizontalLayout {
+                        spacing: 6px;
+                        alignment: start;
+                        for s[i] in ["Keine", "M1", "M2", "M3"]: Chip {
+                            width: 76px;
+                            text: s;
+                            selected: Ui.p-slot == i;
+                            clicked => { Ui.set-slot(i); }
+                        }
+                    }
+                }
+                Row {
+                    title: "Profil löschen";
+                    hint: "Entfernt die Profildatei";
+                    HorizontalLayout {
+                        alignment: start;
+                        Button {
+                            kind: ButtonKind.danger;
+                            has-icon: true;
+                            icon: @image-url("icons/trash.svg");
+                            text: "Löschen";
+                            enabled: Ui.profiles.length > 1;
+                            clicked => { Ui.delete-profile(); }
+                        }
+                    }
+                }
+            }
+        }
+
+        Card {
+            VerticalLayout {
+                padding: 24px;
+                spacing: 20px;
+                SectionTitle {
+                    text: "TASTATUR";
+                }
+                Row {
+                    title: "Layout für Text-Makros";
+                    hint: "Automatisch = Systemeinstellung";
+                    ComboBox {
+                        model: Ui.layout-options;
+                        current-index: Ui.layout-choice;
+                        selected => { Ui.set-layout(self.current-index); }
+                    }
+                }
+                Row {
+                    title: "Gerät";
+                    Label {
+                        text: Ui.connected
+                            ? (Ui.keyboard-name != "" ? Ui.keyboard-name : "Daemon läuft, keine Tastatur")
+                            : "Daemon läuft nicht – starte kyxend";
+                        font-size: Theme.font-md;
+                        color: Ui.connected ? Theme.text : Theme.danger;
+                    }
+                }
+            }
+        }
+
+        Card {
+            VerticalLayout {
+                padding: 24px;
+                spacing: 8px;
+                SectionTitle {
+                    text: "ÜBER";
+                }
+                Label {
+                    text: "kyxen " + Ui.version + " · GPL-3.0 · basiert auf Kyxen von Wade Quinn";
+                    font-size: Theme.font-md;
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,240 @@
+// Right-hand inspector for the selected G-key.
+
+import { TextEdit, LineEdit } from "std-widgets.slint";
+import { Theme } from "theme.slint";
+import { Ui } from "state.slint";
+import { Button, ButtonKind, ChoiceTile, Chip, KeyChip, Label, SectionTitle, Slider, Toggle, Divider, Icon } from "widgets.slint";
+
+export global Kinds {
+    out property <[string]> names: ["Keine", "Text", "Kombination", "Befehl", "Halten", "Maus"];
+    out property <[image]> icons: [
+        @image-url("icons/none.svg"),
+        @image-url("icons/text.svg"),
+        @image-url("icons/combo.svg"),
+        @image-url("icons/terminal.svg"),
+        @image-url("icons/hold.svg"),
+        @image-url("icons/mouse.svg"),
+    ];
+}
+
+export component MacroPanel inherits VerticalLayout {
+    padding: 24px;
+    spacing: 18px;
+
+    HorizontalLayout {
+        spacing: 10px;
+        alignment: start;
+        Text {
+            text: "G" + Ui.sel-gkey;
+            font-family: Theme.font;
+            font-size: Theme.font-xl;
+            font-weight: 800;
+            color: Theme.accent;
+        }
+        Text {
+            text: "·  Makro";
+            font-family: Theme.font;
+            font-size: Theme.font-xl;
+            font-weight: 700;
+            color: Theme.text;
+        }
+    }
+
+    SectionTitle {
+        text: "AKTION";
+    }
+
+    GridLayout {
+        spacing: 8px;
+        Row {
+            for i in [0, 1, 2]: ChoiceTile {
+                icon: Kinds.icons[i];
+                label: Kinds.names[i];
+                selected: Ui.m-kind == i;
+                clicked => { Ui.set-kind(i); }
+            }
+        }
+        Row {
+            for i in [3, 4, 5]: ChoiceTile {
+                icon: Kinds.icons[i];
+                label: Kinds.names[i];
+                selected: Ui.m-kind == i;
+                clicked => { Ui.set-kind(i); }
+            }
+        }
+    }
+
+    Divider { }
+
+    // ── details per action ──────────────────────────────────────────────
+    if Ui.m-kind == 0: Label {
+        text: "Diese G-Taste macht nichts. Wähle oben eine Aktion.";
+        wrap: word-wrap;
+    }
+
+    if Ui.m-kind == 1: VerticalLayout {
+        spacing: 10px;
+        SectionTitle {
+            text: "TEXT";
+        }
+        TextEdit {
+            height: 120px;
+            font-size: Theme.font-md;
+            text <=> Ui.m-text;
+            edited(t) => { Ui.set-text(t); }
+        }
+        Label {
+            text: "Wird mit deinem Tastaturlayout (" + Ui.layout-name + ") getippt – Umlaute, @ und € inklusive.";
+            wrap: word-wrap;
+        }
+    }
+
+    if Ui.m-kind == 2 || Ui.m-kind == 4: VerticalLayout {
+        spacing: 14px;
+        SectionTitle {
+            text: Ui.m-kind == 2 ? "TASTENKOMBINATION" : "GEHALTENE TASTEN";
+        }
+        Rectangle {
+            min-height: 84px;
+            border-radius: Theme.radius;
+            background: Ui.recording ? #ff5f5f10 : Theme.surface;
+            border-width: 1px;
+            border-color: Ui.recording ? #ff5f5f80 : Theme.border;
+            animate background, border-color { duration: 160ms; }
+            if Ui.m-keys.length == 0: Text {
+                text: Ui.recording ? "Drück jetzt die Tasten …" : "Noch keine Tasten";
+                font-family: Theme.font;
+                font-size: Theme.font-md;
+                color: Ui.recording ? Theme.danger : Theme.text-faint;
+            }
+            if Ui.m-keys.length > 0: HorizontalLayout {
+                alignment: center;
+                spacing: 10px;
+                padding: 14px;
+                for k[i] in Ui.m-keys: HorizontalLayout {
+                    spacing: 10px;
+                    if i > 0: Text {
+                        text: "+";
+                        font-family: Theme.font;
+                        font-size: Theme.font-lg;
+                        color: Theme.text-faint;
+                        vertical-alignment: center;
+                    }
+                    KeyChip {
+                        text: k;
+                    }
+                }
+            }
+        }
+        HorizontalLayout {
+            spacing: 10px;
+            Button {
+                horizontal-stretch: 1;
+                kind: ButtonKind.record;
+                has-icon: true;
+                icon: @image-url("icons/record.svg");
+                text: Ui.recording ? "Aufnahme läuft – Esc bricht ab" : "Aufnehmen";
+                clicked => { Ui.start-record(); }
+            }
+            if Ui.m-keys.length > 0 && !Ui.recording: Button {
+                kind: ButtonKind.ghost;
+                has-icon: true;
+                icon: @image-url("icons/x.svg");
+                clicked => { Ui.clear-keys(); }
+            }
+        }
+        if Ui.m-kind == 4: Label {
+            text: "Erster Druck auf die G-Taste hält die Tasten, zweiter Druck lässt sie los.";
+            wrap: word-wrap;
+        }
+    }
+
+    if Ui.m-kind == 3: VerticalLayout {
+        spacing: 10px;
+        SectionTitle {
+            text: "BEFEHL";
+        }
+        LineEdit {
+            font-size: Theme.font-md;
+            placeholder-text: "z. B. notify-send Hallo";
+            text <=> Ui.m-cmd;
+            edited(t) => { Ui.set-cmd(t); }
+        }
+        Label {
+            text: "Läuft im Hintergrund über die Shell, wie in einem Terminal.";
+            wrap: word-wrap;
+        }
+    }
+
+    if Ui.m-kind == 5: VerticalLayout {
+        spacing: 12px;
+        SectionTitle {
+            text: "MAUSTASTE";
+        }
+        HorizontalLayout {
+            spacing: 6px;
+            for b[i] in ["Links", "Rechts", "Mitte", "4", "5"]: Chip {
+                horizontal-stretch: 1;
+                text: b;
+                selected: Ui.m-mouse-btn == i;
+                clicked => { Ui.set-mouse(i, Ui.m-mouse-mode); }
+            }
+        }
+        SectionTitle {
+            text: "VERHALTEN";
+        }
+        HorizontalLayout {
+            spacing: 6px;
+            for m[i] in ["Klick", "Doppelklick", "Halten"]: Chip {
+                horizontal-stretch: 1;
+                text: m;
+                selected: Ui.m-mouse-mode == i;
+                clicked => { Ui.set-mouse(Ui.m-mouse-btn, i); }
+            }
+        }
+    }
+
+    if Ui.m-kind != 0 && Ui.m-kind != 4 && !(Ui.m-kind == 5 && Ui.m-mouse-mode == 2): VerticalLayout {
+        spacing: 14px;
+        Divider { }
+        HorizontalLayout {
+            spacing: 12px;
+            Icon {
+                source: @image-url("icons/repeat.svg");
+                tint: Ui.m-repeat ? Theme.accent : Theme.text-dim;
+                y: (parent.height - self.height) / 2;
+            }
+            Text {
+                text: "Wiederholen solange gedrückt";
+                font-family: Theme.font;
+                font-size: Theme.font-md;
+                color: Theme.text;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+            }
+            Toggle {
+                y: (parent.height - self.height) / 2;
+                checked: Ui.m-repeat;
+                toggled(on) => { Ui.set-repeat(on); }
+            }
+        }
+        if Ui.m-repeat: Slider {
+            label: "Intervall";
+            display: Ui.m-rate-text;
+            value: Ui.m-rate;
+            changed(v) => { Ui.set-rate(v); }
+        }
+    }
+
+    Rectangle {
+        vertical-stretch: 1;
+    }
+
+    Button {
+        has-icon: true;
+        icon: @image-url("icons/play.svg");
+        text: Ui.connected ? "Testen" : "Testen (Daemon läuft nicht)";
+        enabled: Ui.connected && Ui.m-kind != 0;
+        clicked => { Ui.test-macro(); }
+    }
+}

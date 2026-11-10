@@ -1,0 +1,377 @@
+// Reusable controls styled after the Kyxen concept.
+
+import { Theme } from "theme.slint";
+
+export component Icon inherits Image {
+    in property <color> tint: Theme.text;
+    width: 18px;
+    height: 18px;
+    colorize: tint;
+    image-fit: contain;
+}
+
+export component Label inherits Text {
+    font-family: Theme.font;
+    color: Theme.text-dim;
+    font-size: Theme.font-sm;
+    vertical-alignment: center;
+}
+
+export component SectionTitle inherits Text {
+    font-family: Theme.font;
+    color: Theme.text-faint;
+    font-size: Theme.font-xs;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+}
+
+export enum ButtonKind { primary, secondary, ghost, danger, record }
+
+export component Button inherits Rectangle {
+    in property <string> text;
+    in property <image> icon;
+    in property <bool> has-icon: false;
+    in property <ButtonKind> kind: ButtonKind.secondary;
+    in property <bool> enabled: true;
+    in property <length> font-size: Theme.font-md;
+    callback clicked;
+
+    property <color> fg: kind == ButtonKind.primary ? Theme.on-accent
+        : kind == ButtonKind.danger ? Theme.danger
+        : Theme.text;
+    min-height: 40px;
+    min-width: 40px;
+    border-radius: Theme.radius-sm + 2px;
+    opacity: enabled ? 1 : 0.4;
+    background: kind == ButtonKind.primary ? (ta.pressed ? Theme.accent.darker(0.15) : ta.has-hover ? Theme.accent.brighter(0.1) : Theme.accent)
+        : kind == ButtonKind.record ? (ta.has-hover ? #ff5f5f30 : #ff5f5f1c)
+        : kind == ButtonKind.danger ? (ta.has-hover ? Theme.danger-soft : transparent)
+        : kind == ButtonKind.ghost ? (ta.pressed ? Theme.pressed : ta.has-hover ? Theme.hover : transparent)
+        : (ta.pressed ? Theme.pressed : ta.has-hover ? Theme.hover : Theme.raised);
+    border-width: kind == ButtonKind.secondary || kind == ButtonKind.danger || kind == ButtonKind.record ? 1px : 0px;
+    border-color: kind == ButtonKind.danger ? #ff5f5f55 : kind == ButtonKind.record ? #ff5f5f66 : Theme.border-strong;
+    animate background { duration: 120ms; }
+
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 14px;
+        spacing: 8px;
+        alignment: center;
+        if has-icon: Icon {
+            source: icon;
+            tint: kind == ButtonKind.record ? Theme.danger : fg;
+            y: (parent.height - self.height) / 2;
+        }
+        if text != "": Text {
+            text: root.text;
+            font-family: Theme.font;
+            font-size: root.font-size;
+            font-weight: 600;
+            color: fg;
+            vertical-alignment: center;
+        }
+    }
+
+    ta := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+export component IconButton inherits Rectangle {
+    in property <image> icon;
+    in property <bool> active;
+    in property <string> tooltip;
+    callback clicked;
+    width: 36px;
+    height: 36px;
+    border-radius: Theme.radius-sm;
+    background: active ? Theme.accent-soft : ta.has-hover ? Theme.hover : transparent;
+    border-width: active ? 1px : 0px;
+    border-color: Theme.accent-line;
+    animate background { duration: 120ms; }
+    Icon {
+        source: icon;
+        tint: active ? Theme.accent : Theme.text-dim;
+    }
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+export struct TabItem {
+    icon: image,
+    label: string,
+}
+
+// Pill-shaped tabs with a sliding highlight.
+export component Tabs inherits Rectangle {
+    in property <[TabItem]> items;
+    in-out property <int> current;
+    callback changed(int);
+    property <length> item-width: 150px;
+    height: 46px;
+    width: items.length * item-width + 8px;
+    border-radius: self.height / 2;
+    background: Theme.panel;
+    border-width: 1px;
+    border-color: Theme.border;
+
+    Rectangle {
+        x: 4px + current * item-width;
+        y: 4px;
+        width: item-width;
+        height: parent.height - 8px;
+        border-radius: self.height / 2;
+        background: Theme.accent-soft;
+        border-width: 1px;
+        border-color: Theme.accent-line;
+        animate x { duration: 220ms; easing: ease-out; }
+    }
+
+    for item[i] in items: Rectangle {
+        x: 4px + i * item-width;
+        y: 4px;
+        width: item-width;
+        height: parent.height - 8px;
+        HorizontalLayout {
+            alignment: center;
+            spacing: 9px;
+            Icon {
+                source: item.icon;
+                tint: current == i ? Theme.accent : tab-ta.has-hover ? Theme.text : Theme.text-dim;
+                y: (parent.height - self.height) / 2;
+            }
+            Text {
+                text: item.label;
+                font-family: Theme.font;
+                font-size: Theme.font-md;
+                font-weight: current == i ? 700 : 500;
+                color: current == i ? Theme.text : tab-ta.has-hover ? Theme.text : Theme.text-dim;
+                vertical-alignment: center;
+            }
+        }
+        tab-ta := TouchArea {
+            mouse-cursor: pointer;
+            clicked => {
+                root.current = i;
+                root.changed(i);
+            }
+        }
+    }
+}
+
+export component Toggle inherits Rectangle {
+    in-out property <bool> checked;
+    callback toggled(bool);
+    width: 44px;
+    height: 24px;
+    border-radius: self.height / 2;
+    background: checked ? Theme.accent : Theme.pressed;
+    animate background { duration: 160ms; }
+    Rectangle {
+        width: 18px;
+        height: 18px;
+        y: 3px;
+        x: checked ? parent.width - self.width - 3px : 3px;
+        border-radius: 9px;
+        background: checked ? Theme.on-accent.mix(white, 0.0) : #d4d9e2;
+        animate x { duration: 160ms; easing: ease-out; }
+    }
+    TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.checked = !root.checked;
+            root.toggled(root.checked);
+        }
+    }
+}
+
+// Labelled slider, value 0..1, shown as `display`.
+export component Slider inherits VerticalLayout {
+    in property <string> label;
+    in property <string> display;
+    in-out property <float> value;
+    callback changed(float);
+    spacing: 10px;
+
+    HorizontalLayout {
+        Text {
+            text: label;
+            font-family: Theme.font;
+            font-size: Theme.font-md;
+            font-weight: 600;
+            color: Theme.text;
+        }
+        Text {
+            text: display;
+            font-family: Theme.font;
+            font-size: Theme.font-sm;
+            color: Theme.text-dim;
+            horizontal-alignment: right;
+        }
+    }
+    track := Rectangle {
+        height: 22px;
+        Rectangle {
+            y: (parent.height - self.height) / 2;
+            height: 5px;
+            border-radius: 3px;
+            background: Theme.pressed;
+        }
+        Rectangle {
+            x: 0;
+            y: (parent.height - self.height) / 2;
+            width: parent.width * clamp(value, 0, 1);
+            height: 5px;
+            border-radius: 3px;
+            background: Theme.accent;
+        }
+        knob := Rectangle {
+            width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            x: (parent.width - self.width) * clamp(value, 0, 1);
+            y: (parent.height - self.height) / 2;
+            background: #f2f4f8;
+            border-width: 3px;
+            border-color: Theme.accent;
+            drop-shadow-blur: 8px;
+            drop-shadow-color: #00000080;
+        }
+        ta := TouchArea {
+            mouse-cursor: pointer;
+            pointer-event(e) => {
+                if (e.kind == PointerEventKind.down) {
+                    root.value = clamp(self.mouse-x / self.width, 0, 1);
+                    root.changed(root.value);
+                }
+            }
+            moved => {
+                if (self.pressed) {
+                    root.value = clamp(self.mouse-x / self.width, 0, 1);
+                    root.changed(root.value);
+                }
+            }
+        }
+    }
+}
+
+// Tile with icon and caption, used for the macro action picker.
+export component ChoiceTile inherits Rectangle {
+    in property <image> icon;
+    in property <string> label;
+    in property <bool> selected;
+    callback clicked;
+    height: 68px;
+    border-radius: Theme.radius-sm + 2px;
+    background: selected ? Theme.accent-soft : ta.has-hover ? Theme.hover : Theme.raised;
+    border-width: 1px;
+    border-color: selected ? Theme.accent : Theme.border;
+    animate background, border-color { duration: 140ms; }
+    VerticalLayout {
+        alignment: center;
+        spacing: 6px;
+        HorizontalLayout {
+            alignment: center;
+            Icon {
+                source: icon;
+                width: 20px;
+                height: 20px;
+                tint: selected ? Theme.accent : Theme.text-dim;
+            }
+        }
+        Text {
+            text: label;
+            font-family: Theme.font;
+            font-size: Theme.font-sm;
+            font-weight: selected ? 700 : 500;
+            color: selected ? Theme.text : Theme.text-dim;
+            horizontal-alignment: center;
+        }
+    }
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// Small selectable pill (mouse buttons, directions …).
+export component Chip inherits Rectangle {
+    in property <string> text;
+    in property <image> icon;
+    in property <bool> has-icon;
+    in property <bool> selected;
+    callback clicked;
+    height: 36px;
+    min-width: 44px;
+    border-radius: Theme.radius-sm;
+    background: selected ? Theme.accent-soft : ta.has-hover ? Theme.hover : Theme.raised;
+    border-width: 1px;
+    border-color: selected ? Theme.accent : Theme.border;
+    animate background { duration: 120ms; }
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        spacing: 6px;
+        alignment: center;
+        if has-icon: Icon {
+            source: icon;
+            tint: selected ? Theme.accent : Theme.text-dim;
+            y: (parent.height - self.height) / 2;
+        }
+        if text != "": Text {
+            text: root.text;
+            font-family: Theme.font;
+            font-size: Theme.font-sm;
+            font-weight: selected ? 700 : 500;
+            color: selected ? Theme.text : Theme.text-dim;
+            vertical-alignment: center;
+        }
+    }
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// A keycap-shaped chip showing one key of a combination.
+export component KeyChip inherits Rectangle {
+    in property <string> text;
+    min-width: 56px;
+    height: 56px;
+    border-radius: 10px;
+    background: @linear-gradient(180deg, #2a303b 0%, #1d222b 100%);
+    border-width: 1px;
+    border-color: #3a4352;
+    drop-shadow-offset-y: 3px;
+    drop-shadow-blur: 0px;
+    drop-shadow-color: #0a0c10;
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 14px;
+        Text {
+            text: root.text;
+            font-family: Theme.font;
+            font-size: Theme.font-lg;
+            font-weight: 700;
+            color: Theme.text;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+}
+
+export component Card inherits Rectangle {
+    background: Theme.panel;
+    border-radius: Theme.radius-lg;
+    border-width: 1px;
+    border-color: Theme.border;
+}
+
+export component Divider inherits Rectangle {
+    height: 1px;
+    background: Theme.border;
+}

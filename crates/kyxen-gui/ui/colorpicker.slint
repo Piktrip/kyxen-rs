@@ -1,0 +1,127 @@
+// HSV colour picker: saturation/value field, hue bar, hex input, swatches.
+
+import { LineEdit } from "std-widgets.slint";
+import { Theme } from "theme.slint";
+import { Ui } from "state.slint";
+
+export component ColorPicker inherits VerticalLayout {
+    spacing: 14px;
+
+    property <color> hue-colour: Colors.hsv(Ui.pick-h, 1, 1);
+
+    field := Rectangle {
+        height: 150px;
+        Rectangle {
+            border-radius: Theme.radius-sm;
+            clip: true;
+            background: hue-colour;
+            Rectangle {
+                background: @linear-gradient(90deg, #ffffff 0%, #ffffff00 100%);
+            }
+            Rectangle {
+                background: @linear-gradient(180deg, #00000000 0%, #000000 100%);
+            }
+        }
+        // handle sits outside the clipped area so it is never cut off
+        Rectangle {
+            width: 18px;
+            height: 18px;
+            x: parent.width * Ui.pick-s - self.width / 2;
+            y: parent.height * (1 - Ui.pick-v) - self.height / 2;
+            border-radius: 9px;
+            border-width: 3px;
+            border-color: #ffffff;
+            background: Colors.hsv(Ui.pick-h, Ui.pick-s, Ui.pick-v);
+            drop-shadow-blur: 6px;
+            drop-shadow-color: #000000a0;
+        }
+        field-ta := TouchArea {
+            mouse-cursor: crosshair;
+            pointer-event(e) => {
+                if (e.kind == PointerEventKind.down) {
+                    root.pick-sv(self.mouse-x / self.width, self.mouse-y / self.height);
+                }
+            }
+            moved => {
+                if (self.pressed) {
+                    root.pick-sv(self.mouse-x / self.width, self.mouse-y / self.height);
+                }
+            }
+        }
+    }
+
+    hue := Rectangle {
+        height: 14px;
+        border-radius: 7px;
+        background: @linear-gradient(90deg, #ff0000 0%, #ffff00 16.6%, #00ff00 33.3%, #00ffff 50%, #0000ff 66.6%, #ff00ff 83.3%, #ff0000 100%);
+        Rectangle {
+            width: 18px;
+            height: 18px;
+            x: parent.width * Ui.pick-h / 360 - self.width / 2;
+            y: (parent.height - self.height) / 2;
+            border-radius: 9px;
+            border-width: 3px;
+            border-color: #ffffff;
+            background: hue-colour;
+            drop-shadow-blur: 6px;
+            drop-shadow-color: #000000a0;
+        }
+        TouchArea {
+            mouse-cursor: pointer;
+            pointer-event(e) => {
+                if (e.kind == PointerEventKind.down) {
+                    root.pick-hue(self.mouse-x / self.width);
+                }
+            }
+            moved => {
+                if (self.pressed) {
+                    root.pick-hue(self.mouse-x / self.width);
+                }
+            }
+        }
+    }
+
+    HorizontalLayout {
+        spacing: 10px;
+        Rectangle {
+            width: 36px;
+            height: 36px;
+            border-radius: Theme.radius-sm;
+            background: Colors.hsv(Ui.pick-h, Ui.pick-s, Ui.pick-v);
+            border-width: 1px;
+            border-color: #ffffff30;
+        }
+        hex := LineEdit {
+            text <=> Ui.pick-hex;
+            font-size: Theme.font-md;
+            accepted(t) => { Ui.set-hex(t); }
+        }
+    }
+
+    // quick swatches
+    HorizontalLayout {
+        spacing: 6px;
+        for c in [#ff3b30, #ff9500, #ffd60a, #3ddc84, #00d1ff, #0a84ff, #bf5af2, #ff2d95, #ffffff]: Rectangle {
+            height: 22px;
+            border-radius: 6px;
+            background: c;
+            border-width: sw-ta.has-hover ? 2px : 1px;
+            border-color: sw-ta.has-hover ? #ffffff : #ffffff22;
+            sw-ta := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { Ui.set-colour(c); }
+            }
+        }
+    }
+
+    function pick-sv(sx: float, sy: float) {
+        Ui.pick-s = clamp(sx, 0, 1);
+        Ui.pick-v = clamp(1 - sy, 0, 1);
+        Ui.colour-changed(Ui.pick-h, Ui.pick-s, Ui.pick-v);
+    }
+
+    function pick-hue(hx: float) {
+        Ui.pick-h = clamp(hx, 0, 1) * 360;
+        Ui.colour-changed(Ui.pick-h, Ui.pick-s, Ui.pick-v);
+    }
+}

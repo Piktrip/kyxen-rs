@@ -294,6 +294,21 @@ pub struct LightingConfig {
     pub preset: Option<PresetConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub animation: Option<AnimationConfig>,
+    /// Overall brightness 0.0 ..= 1.0 applied to every effect.
+    #[serde(
+        default = "full_brightness",
+        skip_serializing_if = "is_full_brightness"
+    )]
+    pub brightness: f64,
+}
+
+fn full_brightness() -> f64 {
+    1.0
+}
+
+#[allow(clippy::trivially_copy_pass_by_ref)] // serde passes a reference
+fn is_full_brightness(b: &f64) -> bool {
+    (*b - 1.0).abs() < f64::EPSILON
 }
 
 impl Default for LightingConfig {
@@ -304,6 +319,7 @@ impl Default for LightingConfig {
             keys: BTreeMap::new(),
             preset: None,
             animation: None,
+            brightness: 1.0,
         }
     }
 }

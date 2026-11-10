@@ -1,0 +1,147 @@
+import { Theme } from "theme.slint";
+import { Ui, ProfileItem } from "state.slint";
+import { Icon, SectionTitle } from "widgets.slint";
+
+component ProfileCard inherits Rectangle {
+    in property <ProfileItem> item;
+    in property <bool> selected;
+    callback clicked;
+    height: 54px;
+    border-radius: Theme.radius;
+    background: selected ? Theme.accent-soft : ta.has-hover ? Theme.hover : Theme.panel;
+    border-width: 1px;
+    border-color: selected ? Theme.accent : Theme.border;
+    animate background, border-color { duration: 140ms; }
+
+    HorizontalLayout {
+        padding-left: 16px;
+        padding-right: 12px;
+        spacing: 12px;
+        Rectangle {
+            width: 10px;
+            height: 10px;
+            y: (parent.height - self.height) / 2;
+            border-radius: 5px;
+            background: item.color;
+            drop-shadow-blur: 8px;
+            drop-shadow-color: item.color.with-alpha(0.8);
+        }
+        Text {
+            text: item.name;
+            font-family: Theme.font;
+            font-size: Theme.font-md + 1px;
+            font-weight: selected ? 700 : 500;
+            color: selected ? Theme.text : Theme.text-dim;
+            vertical-alignment: center;
+            overflow: elide;
+            horizontal-stretch: 1;
+        }
+        if item.slot > 0: Rectangle {
+            width: 34px;
+            height: 24px;
+            y: (parent.height - self.height) / 2;
+            border-radius: 6px;
+            background: selected ? Theme.accent-soft : Theme.raised;
+            border-width: 1px;
+            border-color: selected ? Theme.accent-line : Theme.border-strong;
+            Text {
+                text: "M" + item.slot;
+                font-family: Theme.font;
+                font-size: Theme.font-xs + 0.5px;
+                font-weight: 700;
+                color: selected ? Theme.accent : Theme.text-dim;
+            }
+        }
+    }
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+export component Sidebar inherits Rectangle {
+    width: 248px;
+    background: Theme.surface;
+
+    Rectangle {
+        x: parent.width - 1px;
+        width: 1px;
+        background: Theme.border;
+    }
+
+    VerticalLayout {
+        padding: 20px;
+        padding-top: 22px;
+        spacing: 10px;
+
+        HorizontalLayout {
+            spacing: 12px;
+            padding-bottom: 18px;
+            padding-left: 4px;
+            Image {
+                source: @image-url("../assets/logo-64.png");
+                width: 34px;
+                height: 34px;
+            }
+            Text {
+                text: "kyxen";
+                font-family: Theme.font;
+                font-size: 24px;
+                font-weight: 800;
+                letter-spacing: -0.5px;
+                color: Theme.text;
+                vertical-alignment: center;
+            }
+        }
+
+        SectionTitle {
+            text: "PROFILE";
+        }
+
+        for p[i] in Ui.profiles: ProfileCard {
+            item: p;
+            selected: i == Ui.current-profile;
+            clicked => { Ui.select-profile(i); }
+        }
+
+        new := Rectangle {
+            height: 46px;
+            border-radius: Theme.radius;
+            background: new-ta.has-hover ? Theme.hover : transparent;
+            border-width: 1px;
+            border-color: new-ta.has-hover ? Theme.border-strong : Theme.border;
+            HorizontalLayout {
+                padding-left: 16px;
+                spacing: 10px;
+                Icon {
+                    source: @image-url("icons/plus.svg");
+                    width: 16px;
+                    height: 16px;
+                    y: (parent.height - self.height) / 2;
+                    tint: Theme.text-dim;
+                }
+                Text {
+                    text: "Neues Profil";
+                    font-family: Theme.font;
+                    font-size: Theme.font-md;
+                    color: Theme.text-dim;
+                    vertical-alignment: center;
+                }
+            }
+            new-ta := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { Ui.new-profile(); }
+            }
+        }
+
+        Rectangle { }
+
+        Text {
+            text: "M1–M3 auf der Tastatur wechseln\ndie zugewiesenen Profile.";
+            font-family: Theme.font;
+            font-size: Theme.font-xs + 0.5px;
+            color: Theme.text-faint;
+            wrap: word-wrap;
+        }
+    }
+}

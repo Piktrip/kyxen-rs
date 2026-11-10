@@ -1,0 +1,25 @@
+[package]
+name = "kyxen-gui"
+description = "Kyxen settings app: profiles, G-key macros and per-key lighting"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "kyxen"
+path = "src/main.rs"
+
+[dependencies]
+kyxen-core.workspace = true
+slint = { version = "1.18", default-features = false, features = ["std", "compat-1-2", "backend-winit", "renderer-femtovg", "accessibility"] }
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[build-dependencies]
+slint-build = "1.18"
+
+[lints]
+workspace = true

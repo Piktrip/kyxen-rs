@@ -27,6 +27,17 @@ pub fn is_animated(cfg: &LightingConfig) -> bool {
 
 /// The frame for `cfg` at `t` seconds after the effect started.
 pub fn frame(cfg: &LightingConfig, map: &Keymap, t: f64) -> Frame {
+    let mut f = raw_frame(cfg, map, t);
+    let b = cfg.brightness.clamp(0.0, 1.0);
+    if b < 1.0 {
+        for (_, rgb) in &mut f {
+            *rgb = scale(*rgb, b);
+        }
+    }
+    f
+}
+
+fn raw_frame(cfg: &LightingConfig, map: &Keymap, t: f64) -> Frame {
     match (cfg.mode, &cfg.preset, &cfg.animation) {
         (LightingMode::Preset, Some(p), _) => {
             let c1 = p.colours.first().map_or(cfg.base_colour.0, |c| c.0);
@@ -364,6 +375,22 @@ mod tests {
                 "{c:?} → {back:?}"
             );
         }
+    }
+
+    #[test]
+    fn brightness_scales_everything() {
+        let map = Keymap::g815();
+        let cfg = LightingConfig {
+            base_colour: colour("#ff8000"),
+            brightness: 0.5,
+            ..Default::default()
+        };
+        assert_eq!(at(&frame(&cfg, map, 0.0), led(map, "A")), Rgb(127, 64, 0));
+        let text = toml::to_string(&LightingConfig::default()).unwrap();
+        assert!(
+            !text.contains("brightness"),
+            "full brightness is not written"
+        );
     }
 
     #[test]

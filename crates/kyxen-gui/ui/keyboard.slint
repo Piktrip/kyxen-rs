@@ -1,0 +1,132 @@
+// Top-down keyboard with live per-key colours.
+
+import { Theme } from "theme.slint";
+import { Ui, KeyCap } from "state.slint";
+
+component KeyCapView inherits Rectangle {
+    in property <KeyCap> key;
+    in property <length> u;
+    in property <bool> hovered;
+    in property <bool> selected;
+    in property <bool> faded;
+
+    property <int> sum: key.color.red + key.color.green + key.color.blue;
+    property <bool> glowing: key.lit && sum > 45;
+    property <color> c: glowing ? key.color : #3a414d;
+    property <length> inset: u * 0.045;
+
+    // Underglow first, so it sits behind the cap.
+    Rectangle {
+        x: inset;
+        y: inset;
+        width: parent.width - 2 * inset;
+        height: parent.height - 2 * inset;
+        border-radius: u * 0.14;
+        background: glowing ? c.with-alpha(0.9) : transparent;
+        drop-shadow-blur: glowing ? u * 0.38 : 0px;
+        drop-shadow-color: glowing ? c.with-alpha(0.7) : transparent;
+    }
+
+    cap := Rectangle {
+        x: inset;
+        y: inset - (hovered ? u * 0.03 : 0px);
+        width: parent.width - 2 * inset;
+        height: parent.height - 2 * inset;
+        border-radius: u * 0.14;
+        background: glowing
+            ? @linear-gradient(180deg, #1c2028.mix(c, 0.8) 0%, #0f1216.mix(c, 0.9) 100%)
+            : @linear-gradient(180deg, #232832 0%, #191d24 100%);
+        border-width: selected ? 2px : 1px;
+        border-color: selected ? Theme.accent : glowing ? c.with-alpha(0.75) : #333a46;
+        opacity: faded ? 0.45 : 1;
+        animate y { duration: 90ms; }
+
+        if key.sub != "": Text {
+            x: u * 0.14;
+            y: u * 0.07;
+            text: key.sub;
+            font-family: Theme.font;
+            font-size: u * 0.2;
+            color: glowing ? #ffffff.mix(c, 0.25).with-alpha(0.75) : Theme.text-faint;
+        }
+        Text {
+            x: key.sub != "" ? u * 0.14 : 0px;
+            y: key.sub != "" ? parent.height - self.height - u * 0.05 : 0px;
+            width: key.sub != "" ? self.preferred-width : parent.width;
+            height: key.sub != "" ? self.preferred-height : parent.height;
+            text: key.label;
+            font-family: Theme.font;
+            font-size: key.label.character-count > 3 ? u * 0.2 : key.gkey > 0 ? u * 0.27 : u * 0.28;
+            font-weight: key.gkey > 0 ? 700 : 600;
+            color: glowing ? #ffffff.mix(c, 0.35) : Theme.text-dim;
+            horizontal-alignment: key.sub != "" ? left : center;
+            vertical-alignment: center;
+        }
+    }
+
+    if selected: Rectangle {
+        x: inset - 4px;
+        y: cap.y - 4px;
+        width: parent.width - 2 * inset + 8px;
+        height: parent.height - 2 * inset + 8px;
+        border-radius: u * 0.14 + 4px;
+        border-width: 2px;
+        border-color: Theme.accent-line;
+    }
+}
+
+export component KeyboardView inherits Rectangle {
+    // highlight G-keys (macro tab) and fade the rest
+    in property <bool> gkey-focus;
+    in property <int> selected-gkey;
+    // drag painting enabled (lighting tab, static effect)
+    in property <bool> paint-mode;
+
+    property <float> span-w: Ui.kb-w + 0.9;
+    property <float> span-h: Ui.kb-h + 0.9;
+    property <length> u: min(self.width / span-w, self.height / span-h);
+    property <length> pad: u * 0.45;
+    property <int> hovered: ta.has-hover
+        ? Ui.key-at((ta.mouse-x - pad) / u, (ta.mouse-y - pad) / u)
+        : -1;
+
+    chassis := Rectangle {
+        width: span-w * u;
+        height: span-h * u;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        border-radius: u * 0.4;
+        background: @linear-gradient(180deg, #171a20 0%, #101317 100%);
+        border-width: 1px;
+        border-color: #2a303a;
+        drop-shadow-blur: u * 2.2;
+        drop-shadow-color: Ui.glow.with-alpha(0.32);
+
+        for k[i] in Ui.keys: KeyCapView {
+            key: k;
+            u: u;
+            x: pad + k.x * u;
+            y: pad + k.y * u;
+            width: k.w * u;
+            height: k.h * u;
+            hovered: i == hovered && (paint-mode || (gkey-focus && k.gkey > 0));
+            selected: gkey-focus && k.gkey > 0 && k.gkey == selected-gkey;
+            faded: gkey-focus && k.gkey == 0;
+        }
+
+        ta := TouchArea {
+            mouse-cursor: (paint-mode && hovered >= 0) || (gkey-focus && hovered >= 0 && Ui.keys[hovered].gkey > 0)
+                ? pointer : default;
+            pointer-event(e) => {
+                if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left && hovered >= 0) {
+                    Ui.key-clicked(hovered);
+                }
+            }
+            moved => {
+                if (self.pressed && paint-mode && hovered >= 0) {
+                    Ui.key-dragged(hovered);
+                }
+            }
+        }
+    }
+}

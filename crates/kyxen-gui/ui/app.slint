@@ -1,0 +1,323 @@
+import { Theme } from "theme.slint";
+import { Ui, GKeyInfo } from "state.slint";
+import { Icon, IconButton, Tabs, TabItem, Label } from "widgets.slint";
+import { Sidebar } from "sidebar.slint";
+import { KeyboardView } from "keyboard.slint";
+import { MacroPanel, Kinds } from "macro-panel.slint";
+import { LightingPanel } from "lighting-panel.slint";
+import { SettingsPage } from "settings-page.slint";
+
+export { Ui }
+
+component GKeyCard inherits Rectangle {
+    in property <GKeyInfo> info;
+    in property <bool> selected;
+    callback clicked;
+    height: 64px;
+    border-radius: Theme.radius;
+    background: selected ? Theme.accent-soft : ta.has-hover ? Theme.hover : Theme.panel;
+    border-width: 1px;
+    border-color: selected ? Theme.accent : Theme.border;
+    animate background, border-color { duration: 140ms; }
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 14px;
+        spacing: 12px;
+        Text {
+            text: "G" + info.n;
+            font-family: Theme.font;
+            font-size: Theme.font-lg;
+            font-weight: 800;
+            color: selected ? Theme.accent : Theme.text;
+            vertical-alignment: center;
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            horizontal-stretch: 1;
+            HorizontalLayout {
+                spacing: 6px;
+                Icon {
+                    source: Kinds.icons[info.kind];
+                    width: 13px;
+                    height: 13px;
+                    tint: Theme.text-faint;
+                }
+                Text {
+                    text: Kinds.names[info.kind];
+                    font-family: Theme.font;
+                    font-size: Theme.font-xs + 0.5px;
+                    font-weight: 600;
+                    color: Theme.text-faint;
+                }
+            }
+            Text {
+                text: info.summary;
+                font-family: Theme.font;
+                font-size: Theme.font-sm;
+                color: info.kind == 0 ? Theme.text-faint : Theme.text-dim;
+                overflow: elide;
+            }
+        }
+    }
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+component Toolbar inherits Rectangle {
+    height: 52px;
+    width: row.preferred-width + 12px;
+    border-radius: Theme.radius;
+    background: Theme.panel;
+    border-width: 1px;
+    border-color: Theme.border;
+    row := HorizontalLayout {
+        padding: 6px;
+        spacing: 4px;
+        for t[i] in [
+            { icon: @image-url("icons/brush.svg"), label: "Pinsel" },
+            { icon: @image-url("icons/fill.svg"), label: "Füllen" },
+            { icon: @image-url("icons/pipette.svg"), label: "Pipette" },
+            { icon: @image-url("icons/eraser.svg"), label: "Radierer" },
+        ]: Rectangle {
+            width: tl.preferred-width + 24px;
+            border-radius: Theme.radius-sm;
+            background: Ui.tool == i ? Theme.accent-soft : tool-ta.has-hover ? Theme.hover : transparent;
+            border-width: Ui.tool == i ? 1px : 0px;
+            border-color: Theme.accent-line;
+            tl := HorizontalLayout {
+                x: 12px;
+                spacing: 8px;
+                Icon {
+                    source: t.icon;
+                    tint: Ui.tool == i ? Theme.accent : Theme.text-dim;
+                    y: (parent.height - self.height) / 2;
+                }
+                Text {
+                    text: t.label;
+                    font-family: Theme.font;
+                    font-size: Theme.font-sm + 0.5px;
+                    font-weight: Ui.tool == i ? 700 : 500;
+                    color: Ui.tool == i ? Theme.text : Theme.text-dim;
+                    vertical-alignment: center;
+                }
+            }
+            tool-ta := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { Ui.tool = i; }
+            }
+        }
+        Rectangle {
+            width: 1px;
+            background: Theme.border;
+        }
+        Rectangle {
+            width: 52px;
+            Rectangle {
+                width: 30px;
+                height: 30px;
+                border-radius: 8px;
+                background: Ui.brush;
+                border-width: 2px;
+                border-color: #ffffff40;
+                drop-shadow-blur: 10px;
+                drop-shadow-color: Ui.brush.with-alpha(0.6);
+            }
+        }
+    }
+}
+
+component StatusBar inherits Rectangle {
+    height: 38px;
+    background: Theme.surface;
+    Rectangle {
+        y: 0;
+        height: 1px;
+        background: Theme.border;
+    }
+    HorizontalLayout {
+        padding-left: 20px;
+        padding-right: 20px;
+        spacing: 18px;
+        HorizontalLayout {
+            horizontal-stretch: 0;
+            spacing: 8px;
+            Rectangle {
+                width: 9px;
+                height: 9px;
+                y: (parent.height - self.height) / 2;
+                border-radius: 5px;
+                background: !Ui.connected ? Theme.danger : Ui.keyboard-name != "" ? Theme.accent : #ffb340;
+                drop-shadow-blur: 6px;
+                drop-shadow-color: self.background;
+            }
+            Label {
+                text: !Ui.connected ? "Daemon läuft nicht"
+                    : Ui.keyboard-name != "" ? Ui.keyboard-name + " verbunden"
+                    : "Warte auf Tastatur";
+                color: Theme.text;
+            }
+        }
+        Rectangle {
+            width: 1px;
+            height: 16px;
+            y: (parent.height - self.height) / 2;
+            background: Theme.border-strong;
+        }
+        Label {
+            text: "Layout: " + Ui.layout-name;
+        }
+        Rectangle {
+            width: 1px;
+            height: 16px;
+            y: (parent.height - self.height) / 2;
+            background: Theme.border-strong;
+        }
+        HorizontalLayout {
+            horizontal-stretch: 0;
+            spacing: 6px;
+            Icon {
+                source: @image-url("icons/check.svg");
+                width: 14px;
+                height: 14px;
+                tint: Theme.accent;
+                y: (parent.height - self.height) / 2;
+            }
+            Label {
+                text: Ui.save-state;
+            }
+        }
+        Rectangle {
+            horizontal-stretch: 1;
+        }
+        Label {
+            text: Ui.toast;
+            color: Theme.text;
+        }
+    }
+}
+
+export component AppWindow inherits Window {
+    title: "Kyxen";
+    icon: @image-url("../assets/icon-256.png");
+    min-width: 1180px;
+    min-height: 740px;
+    preferred-width: 1480px;
+    preferred-height: 920px;
+    background: Theme.bg;
+    default-font-family: Theme.font;
+
+    property <bool> rec: Ui.recording;
+    changed rec => {
+        if (rec) {
+            capture.focus();
+        }
+    }
+
+    VerticalLayout {
+        HorizontalLayout {
+            vertical-stretch: 1;
+            Sidebar { }
+
+            VerticalLayout {
+                horizontal-stretch: 1;
+                padding: 24px;
+                padding-bottom: 20px;
+                spacing: 20px;
+
+                HorizontalLayout {
+                    alignment: center;
+                    Tabs {
+                        items: [
+                            { icon: @image-url("icons/keyboard.svg"), label: "Tasten" },
+                            { icon: @image-url("icons/light.svg"), label: "Licht" },
+                            { icon: @image-url("icons/settings.svg"), label: "Einstellungen" },
+                        ];
+                        current <=> Ui.tab;
+                    }
+                }
+
+                if Ui.tab == 1: HorizontalLayout {
+                    alignment: center;
+                    if Ui.l-effect == 0: Toolbar { }
+                    if Ui.l-effect != 0: Rectangle {
+                        height: 52px;
+                        width: hint.preferred-width + 40px;
+                        border-radius: Theme.radius;
+                        background: Theme.panel;
+                        border-width: 1px;
+                        border-color: Theme.border;
+                        hint := Label {
+                            text: "Live-Vorschau · zum Bemalen einzelner Tasten auf „Statisch“ wechseln";
+                        }
+                    }
+                }
+
+                if Ui.tab != 2: stage := Rectangle {
+                    vertical-stretch: 1;
+                    // keyboard + G-key cards, centred as one block
+                    property <length> cards-h: Ui.tab == 0 ? 64px + 26px : 0px;
+                    property <length> kb-h: min(self.width * (Ui.kb-h + 0.9) / (Ui.kb-w + 0.9), self.height - cards-h);
+                    KeyboardView {
+                        y: (parent.height - kb-h - cards-h) / 2;
+                        height: kb-h;
+                        gkey-focus: Ui.tab == 0;
+                        selected-gkey: Ui.sel-gkey;
+                        paint-mode: Ui.tab == 1 && Ui.l-effect == 0;
+                    }
+                    if Ui.tab == 0: HorizontalLayout {
+                        y: (parent.height - kb-h - cards-h) / 2 + kb-h + 26px;
+                        height: 64px;
+                        spacing: 10px;
+                        for g in Ui.gkeys: GKeyCard {
+                            horizontal-stretch: 1;
+                            preferred-width: 10px;
+                            min-width: 10px;
+                            info: g;
+                            selected: g.n == Ui.sel-gkey;
+                            clicked => { Ui.select-gkey(g.n); }
+                        }
+                    }
+                }
+
+                if Ui.tab == 2: SettingsPage {
+                    vertical-stretch: 1;
+                }
+            }
+
+            if Ui.tab != 2: Rectangle {
+                width: 384px;
+                background: Theme.surface;
+                Rectangle {
+                    x: 0;
+                    width: 1px;
+                    background: Theme.border;
+                }
+                if Ui.tab == 0: MacroPanel { }
+                if Ui.tab == 1: LightingPanel { }
+            }
+        }
+        StatusBar { }
+    }
+
+    capture := FocusScope {
+        width: 0px;
+        height: 0px;
+        key-pressed(e) => {
+            if (Ui.recording) {
+                Ui.record-key(e.text, true);
+                return accept;
+            }
+            return reject;
+        }
+        key-released(e) => {
+            if (Ui.recording) {
+                Ui.record-key(e.text, false);
+                return accept;
+            }
+            return reject;
+        }
+    }
+}

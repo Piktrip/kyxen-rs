@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/kyxen-hidpp", "crates/kyxen-core", "crates/kyxend"]
+members = ["crates/kyxen-hidpp", "crates/kyxen-core", "crates/kyxend", "crates/kyxen-gui"]
 
 [workspace.package]
 version = "0.1.0"
@@ -28,7 +28,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [workspace.lints.rust]
-unsafe_code = "forbid"
+unsafe_code = "deny"
 missing_debug_implementations = "warn"
 
 [workspace.lints.clippy]

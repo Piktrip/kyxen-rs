@@ -1,0 +1,119 @@
+// Shared state between the Slint UI and the Rust backend.
+
+export struct KeyCap {
+    name: string,
+    label: string,  // main legend
+    sub: string,    // shifted legend (top-left), may be empty
+    x: float,       // key units
+    y: float,
+    w: float,
+    h: float,
+    color: color,
+    lit: bool,      // has an LED
+    gkey: int,      // 1..5 for G-keys, else 0
+}
+
+export struct ProfileItem {
+    id: string,
+    name: string,
+    color: color,
+    slot: int,      // 0 = none, 1..3 = M1..M3
+}
+
+export struct GKeyInfo {
+    n: int,
+    kind: int,
+    summary: string,
+}
+
+export struct Thumb {
+    colors: [color],
+}
+
+export global Ui {
+    // ── app ─────────────────────────────────────────────────────────────
+    in-out property <int> tab: 0;
+    in property <bool> connected;
+    in property <string> keyboard-name;
+    in property <string> layout-name;
+    in property <string> save-state;
+    in property <string> toast;
+
+    in property <[ProfileItem]> profiles;
+    in property <int> current-profile;
+    callback select-profile(int);
+    callback new-profile();
+
+    // ── keyboard ────────────────────────────────────────────────────────
+    in property <[KeyCap]> keys;
+    in property <float> kb-w: 24;
+    in property <float> kb-h: 7;
+    in property <color> glow;
+    pure callback key-at(float, float) -> int;
+    callback key-clicked(int);
+    callback key-dragged(int);
+
+    // ── G-key macros ────────────────────────────────────────────────────
+    in property <[GKeyInfo]> gkeys;
+    in property <int> sel-gkey: 1;
+    in property <int> m-kind;
+    in-out property <string> m-text;
+    in-out property <string> m-cmd;
+    in property <[string]> m-keys;
+    in property <bool> m-repeat;
+    in property <float> m-rate;       // slider position 0..1
+    in property <string> m-rate-text;
+    in property <int> m-mouse-btn;
+    in property <int> m-mouse-mode;
+    in-out property <bool> recording;
+    callback select-gkey(int);
+    callback set-kind(int);
+    callback set-text(string);
+    callback set-cmd(string);
+    callback start-record();
+    callback record-key(string, bool);
+    callback clear-keys();
+    callback set-repeat(bool);
+    callback set-rate(float);
+    callback set-mouse(int, int);
+    callback test-macro();
+
+    // ── lighting ────────────────────────────────────────────────────────
+    in property <int> l-effect;       // 0 static, 1 breathing, 2 wave, 3 rainbow, 4 cycle, 5 animation
+    in property <float> l-speed;      // slider position 0..1
+    in property <string> l-speed-text;
+    in property <float> l-brightness;
+    in property <int> l-direction;    // 0 → 1 ← 2 ↓ 3 ↑ 4 radial
+    in property <[color]> l-stops;
+    in property <int> l-stop;
+    in-out property <int> tool: 0;    // 0 brush, 1 fill, 2 pipette, 3 eraser
+    in property <[Thumb]> thumbs;
+    in property <color> brush;
+    in-out property <float> pick-h;   // 0..360
+    in-out property <float> pick-s;   // 0..1
+    in-out property <float> pick-v;   // 0..1
+    in-out property <string> pick-hex;
+    callback set-effect(int);
+    callback set-speed(float);
+    callback set-brightness(float);
+    callback set-direction(int);
+    callback select-stop(int);
+    callback colour-changed(float, float, float);
+    callback set-hex(string);
+    callback set-colour(color);
+    callback fill-all();
+    callback clear-paint();
+
+    // ── settings ────────────────────────────────────────────────────────
+    in-out property <string> p-name;
+    in property <int> p-slot;
+    in property <[color]> palette;
+    in property <int> layout-choice;
+    in property <[string]> layout-options;
+    in property <string> version;
+    callback rename(string);
+    callback set-slot(int);
+    callback set-profile-color(color);
+    callback delete-profile();
+    callback set-layout(int);
+}
