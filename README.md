@@ -50,7 +50,18 @@ numbers, unit ids, user or host names. Running it is still at your own risk.
 Config files and the control socket are compatible with Python Kyxen, so its
 GUI keeps working with this daemon.
 
-## Build and install
+## Install
+
+Download `kyxen-<version>-x86_64-linux.tar.gz` from the
+[releases](https://github.com/Piktrip/kyxen-rs/releases), then:
+
+```bash
+tar xzf kyxen-*-x86_64-linux.tar.gz
+cd kyxen-*-x86_64-linux
+./kyxend install
+```
+
+Or build it yourself:
 
 ```bash
 cargo build --release

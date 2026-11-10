@@ -1,0 +1,72 @@
+# Builds Kyxen (kyxend + the kyxen app) for x86_64 Linux.
+#
+# - Push a tag like v0.1.0: tests, build, and a DRAFT release with the
+#   archive attached. Review it on GitHub and publish it by hand.
+# - "Run workflow" (manual): same build, the archive is only kept as a
+#   workflow artifact (for testing the pipeline).
+#
+# Built on Ubuntu 22.04 so the binaries run on distributions with
+# glibc 2.35 or newer.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust (from rust-toolchain.toml)
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: System libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends pkg-config libfontconfig1-dev
+
+      - name: Test
+        run: cargo test --workspace --locked
+
+      - name: Build
+        run: cargo build --release --locked -p kyxend -p kyxen-gui
+
+      - name: Package
+        id: package
+        run: |
+          version="${GITHUB_REF_NAME}"
+          [[ "$GITHUB_REF_TYPE" == tag ]] || version="dev-${GITHUB_SHA::7}"
+          name="kyxen-${version}-x86_64-linux"
+          mkdir "$name"
+          cp target/release/kyxend target/release/kyxen "$name/"
+          cp README.md LICENSE "$name/"
+          cp packaging/INSTALL.txt "$name/"
+          tar czf "$name.tar.gz" "$name"
+          sha256sum "$name.tar.gz" > "$name.tar.gz.sha256"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      - name: Keep as artifact (manual runs)
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.name }}
+          path: |
+            ${{ steps.package.outputs.name }}.tar.gz
+            ${{ steps.package.outputs.name }}.tar.gz.sha256
+
+      - name: Draft release (tags)
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          files: |
+            ${{ steps.package.outputs.name }}.tar.gz
+            ${{ steps.package.outputs.name }}.tar.gz.sha256

@@ -1,0 +1,24 @@
+Kyxen — G-key macros, M-key profiles and per-key RGB for Logitech keyboards
+https://github.com/Piktrip/kyxen-rs
+
+Use at your own risk: Kyxen is an unofficial hobby project, not affiliated
+with Logitech, and comes without any warranty (GPL-3.0, see LICENSE).
+
+Install (per user, no root):
+
+    ./kyxend install
+
+This copies kyxend and the kyxen app to ~/.local/bin, starts the kyxend
+systemd user service, adds Kyxen to the app launcher and starts the tray
+icon at login (--no-tray to skip). Remove it all with: kyxend uninstall
+
+The daemon needs access to the keyboard. Once, with root:
+
+    echo 'KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c33e|c33f", TAG+="uaccess"' \
+      | sudo tee /etc/udev/rules.d/70-kyxen.rules
+    sudo udevadm control --reload-rules && sudo udevadm trigger
+
+Your keyboard is not supported yet? Open Kyxen → Settings → Help →
+Create report (or run: kyxend report) and attach the file to an issue.
+
+More in README.md.
