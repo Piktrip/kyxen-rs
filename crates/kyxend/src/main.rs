@@ -16,7 +16,6 @@ use kyxen_core::config::Store;
 use kyxen_hidpp::HidppDevice;
 use kyxen_hidpp::hidraw::Hidraw;
 use kyxen_hidpp::onboard::OnboardProfiles;
-use serde_json::json;
 use signal_hook::consts::{SIGINT, SIGTERM};
 use signal_hook::iterator::Signals;
 use tracing::info;
@@ -61,9 +60,9 @@ fn main() -> Result<()> {
         Cmd::Run => run(),
         Cmd::Probe => probe(),
         Cmd::Restore { slot } => restore(slot),
-        Cmd::Status => client(&json!({"cmd": "status"})),
-        Cmd::Switch { profile } => client(&json!({"cmd": "switch", "profile": profile})),
-        Cmd::Reload => client(&json!({"cmd": "reload"})),
+        Cmd::Status => client(&ipc::Request::Status),
+        Cmd::Switch { profile } => client(&ipc::Request::Switch { profile }),
+        Cmd::Reload => client(&ipc::Request::Reload),
     }
 }
 
@@ -133,7 +132,7 @@ fn restore(slot: u8) -> Result<()> {
     Ok(())
 }
 
-fn client(req: &serde_json::Value) -> Result<()> {
+fn client(req: &ipc::Request) -> Result<()> {
     let resp = ipc::request(&ipc::socket_path(), req)?;
     println!("{}", serde_json::to_string_pretty(&resp)?);
     Ok(())

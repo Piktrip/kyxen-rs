@@ -233,6 +233,7 @@ dependencies = [
  "evdev",
  "kyxen-hidpp",
  "serde",
+ "serde_json",
  "thiserror",
  "toml",
  "tracing",

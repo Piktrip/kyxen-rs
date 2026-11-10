@@ -4,6 +4,7 @@
 pub mod colour;
 pub mod config;
 pub mod effects;
+pub mod ipc;
 pub mod keymap;
 pub mod layout;
 pub mod macros;

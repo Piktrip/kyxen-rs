@@ -1,41 +1,24 @@
 //! Unix-socket control interface, wire-compatible with Python Kyxen's GUI:
 //! one JSON request per connection, one JSON response.
 //!
-//! ```text
-//! {"cmd": "status"}                 → {"active_profile", "profiles", "keyboard"}
-//! {"cmd": "switch", "profile": "x"} → {"ok": bool}
-//! {"cmd": "reload"}                 → {"ok": true}
-//! ```
+//! Protocol: see [`kyxen_core::ipc`].
 
 use std::fs;
 use std::io::{ErrorKind, Read, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::{UnixListener, UnixStream};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
 use crossbeam_channel::Sender;
-use serde::Deserialize;
 use serde_json::{Value, json};
 use tracing::{debug, warn};
 
 use crate::daemon::Event;
 
-/// Same path as Python Kyxen so its GUI keeps working.
-pub const SOCKET: &str = "/tmp/kyxen.sock";
-
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-#[serde(tag = "cmd", rename_all = "snake_case")]
-pub enum Request {
-    Status,
-    Switch {
-        #[serde(default)]
-        profile: String,
-    },
-    Reload,
-}
+pub use kyxen_core::ipc::{Request, socket_path};
 
 /// Bind the socket; fails if another daemon is already answering on it.
 pub fn bind(path: &Path) -> Result<UnixListener> {
@@ -110,39 +93,14 @@ fn serve(mut stream: UnixStream, events: &Sender<Event>) -> Result<()> {
 }
 
 /// Client side, used by `kyxend status|switch|reload`.
-pub fn request(path: &Path, req: &Value) -> Result<Value> {
-    let mut s = UnixStream::connect(path)
-        .with_context(|| format!("connect {} — is kyxend running?", path.display()))?;
-    s.set_read_timeout(Some(Duration::from_secs(3)))?;
-    s.write_all(req.to_string().as_bytes())?;
-    let mut out = Vec::new();
-    s.read_to_end(&mut out)?;
-    Ok(serde_json::from_slice(&out)?)
-}
-
-pub fn socket_path() -> PathBuf {
-    std::env::var_os("KYXEN_SOCKET").map_or_else(|| PathBuf::from(SOCKET), PathBuf::from)
+pub fn request(path: &Path, req: &Request) -> Result<Value> {
+    kyxen_core::ipc::request(path, req)
+        .with_context(|| format!("talk to {} — is kyxend running?", path.display()))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn parses_python_gui_requests() {
-        let r: Request = serde_json::from_str(r#"{"cmd": "switch", "profile": "gaming"}"#).unwrap();
-        assert_eq!(
-            r,
-            Request::Switch {
-                profile: "gaming".into()
-            }
-        );
-        assert_eq!(
-            serde_json::from_str::<Request>(r#"{"cmd":"status"}"#).unwrap(),
-            Request::Status
-        );
-        assert!(serde_json::from_str::<Request>(r#"{"cmd":"explode"}"#).is_err());
-    }
 
     #[test]
     fn round_trip_over_socket() {
@@ -161,7 +119,7 @@ mod tests {
                     .unwrap();
             }
         });
-        let resp = request(&path, &json!({"cmd": "status"})).unwrap();
+        let resp = request(&path, &Request::Status).unwrap();
         assert_eq!(resp["active_profile"], "test");
         assert!(
             bind(&path).is_err(),

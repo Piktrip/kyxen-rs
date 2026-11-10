@@ -191,6 +191,14 @@ impl Daemon {
                 self.reload();
                 json!({ "ok": true })
             }
+            Request::Run { gkey } => {
+                let action = self.active_profile().and_then(|p| p.gkey(gkey)).cloned();
+                let ok = action.is_some_and(|a| {
+                    // a single run, even for repeat/hold macros
+                    self.actions.send(Job::Run(a)).is_ok()
+                });
+                json!({ "ok": ok })
+            }
         }
     }
 
