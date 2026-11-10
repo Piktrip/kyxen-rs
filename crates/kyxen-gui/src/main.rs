@@ -64,6 +64,22 @@ fn save_png(window: &AppWindow, path: &str) -> Result<(), Box<dyn std::error::Er
     Ok(())
 }
 
+/// Show the window (tray click, "Kyxen öffnen", a second `kyxen`).
+///
+/// On Wayland, Slint/winit never maps a window whose surface was created while
+/// it was hidden (`kyxen --tray`): `show()` reports success, but nothing
+/// appears. Hiding destroys the surface on Wayland, so show → hide → show
+/// gets a fresh one that does map.
+pub fn present(w: &AppWindow) {
+    if w.window().is_visible() {
+        w.window().set_minimized(false);
+        return;
+    }
+    let _ = w.show();
+    let _ = w.hide();
+    let _ = w.show();
+}
+
 fn main() -> Result<(), slint::PlatformError> {
     tracing_subscriber::fmt()
         .with_env_filter(

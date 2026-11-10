@@ -29,9 +29,7 @@ pub fn listen(ui: slint::Weak<AppWindow>) -> bool {
         for mut conn in listener.incoming().flatten() {
             let mut buf = [0u8; 8];
             if conn.read(&mut buf).is_ok_and(|n| &buf[..n] == b"show") {
-                let _ = ui.upgrade_in_event_loop(|w| {
-                    let _ = slint::ComponentHandle::show(&w);
-                });
+                let _ = ui.upgrade_in_event_loop(|w| crate::present(&w));
             }
         }
     });

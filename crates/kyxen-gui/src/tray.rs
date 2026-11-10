@@ -65,9 +65,7 @@ impl KyxenTray {
     }
 
     fn show_window(&self) {
-        let _ = self.ui.upgrade_in_event_loop(|w| {
-            let _ = slint::ComponentHandle::show(&w);
-        });
+        let _ = self.ui.upgrade_in_event_loop(|w| crate::present(&w));
     }
 }
 
