@@ -4,6 +4,7 @@
 //! Closing the window keeps the app in the tray; "Beenden" in the tray menu
 //! quits. Starting it again shows the running window.
 
+mod activation;
 mod app;
 mod instance;
 mod labels;
@@ -69,23 +70,34 @@ fn save_png(window: &AppWindow, path: &str) -> Result<(), Box<dyn std::error::Er
     Ok(())
 }
 
-/// Show the window (tray click, "Kyxen öffnen", a second `kyxen`).
+/// Show the window and bring it to the front (tray click, "Kyxen öffnen",
+/// a second `kyxen`).
 ///
-/// On Wayland, Slint/winit never maps a window whose surface was created while
-/// it was hidden (`kyxen --tray`): `show()` reports success, but nothing
-/// appears. Hiding destroys the surface on Wayland, so show → hide → show
-/// gets a fresh one that does map.
+/// On Wayland:
+/// - Slint/winit never maps a window whose surface was created while it was
+///   hidden (`kyxen --tray`): `show()` reports success, but nothing appears.
+///   Hiding destroys the surface on Wayland, so show → hide → show gets a
+///   fresh one that does map.
+/// - A window is only raised (and the launcher's feedback only ends) when it
+///   presents the activation token of the click or launch (see [`activation`]).
 pub fn present(w: &AppWindow) {
+    let token = activation::take();
     if w.window().is_visible() {
         w.window().set_minimized(false);
-        return;
+    } else {
+        let _ = w.show();
+        let _ = w.hide();
+        let _ = w.show();
     }
-    let _ = w.show();
-    let _ = w.hide();
-    let _ = w.show();
+    if let Some(token) = token {
+        activation::raise(w.as_weak(), token);
+    }
 }
 
 fn main() -> Result<(), slint::PlatformError> {
+    // before anything else: removing it from the environment is only sound
+    // while we are single-threaded
+    let launch_token = activation::from_env();
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
@@ -95,7 +107,7 @@ fn main() -> Result<(), slint::PlatformError> {
 
     let shot = parse_shot();
     let start_hidden = std::env::args().any(|a| a == "--tray");
-    if shot.is_none() && instance::signal_running() {
+    if shot.is_none() && instance::signal_running(launch_token.as_deref()) {
         // an instance is already running; it shows its window
         return Ok(());
     }
@@ -106,7 +118,7 @@ fn main() -> Result<(), slint::PlatformError> {
     if shot.is_none() && !instance::listen(window.as_weak()) {
         // lost the race against another instance starting right now
         if !start_hidden {
-            instance::signal_running();
+            instance::signal_running(launch_token.as_deref());
         }
         return Ok(());
     }
@@ -171,6 +183,10 @@ fn main() -> Result<(), slint::PlatformError> {
     }
     if !(has_tray && start_hidden) {
         window.show()?;
+        if let Some(token) = launch_token {
+            // ends the launcher's feedback and gives the window focus
+            activation::raise(window.as_weak(), token);
+        }
     }
     slint::run_event_loop_until_quit()
 }

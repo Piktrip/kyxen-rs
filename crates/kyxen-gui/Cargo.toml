@@ -16,9 +16,14 @@ path = "src/main.rs"
 ksni = { version = "0.3", default-features = false, features = ["blocking", "async-io"] }
 kyxen-core.workspace = true
 png = "0.17"
-slint = { version = "1.18", default-features = false, features = ["std", "compat-1-2", "backend-winit", "renderer-femtovg", "accessibility"] }
+# ~1.18: the winit accessor (unstable-winit-030) may change in minor releases
+slint = { version = "~1.18", default-features = false, features = ["std", "compat-1-2", "backend-winit", "renderer-femtovg", "accessibility", "unstable-winit-030"] }
 tracing.workspace = true
 tracing-subscriber.workspace = true
+# XDG activation on the live Wayland surface (same versions winit uses)
+wayland-backend = { version = "0.3", features = ["client_system"] }
+wayland-client = "0.31"
+wayland-protocols = { version = "0.32", features = ["client", "staging"] }
 
 [build-dependencies]
 slint-build = "1.18"

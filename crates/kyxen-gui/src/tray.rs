@@ -76,6 +76,15 @@ impl KyxenTray {
     }
 
     fn show_window(&self) {
+        // The host sends the click's activation token separately and may
+        // deliver it just after the click itself (KDE does).
+        for _ in 0..20 {
+            if let Some(token) = ksni::current_xdg_activation_token() {
+                crate::activation::set(token);
+                break;
+            }
+            thread::sleep(std::time::Duration::from_millis(5));
+        }
         let _ = self.ui.upgrade_in_event_loop(|w| crate::present(&w));
     }
 }
