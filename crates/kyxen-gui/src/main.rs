@@ -1,7 +1,13 @@
 //! `kyxen` — settings app for kyxend: profiles, G-key macros, lighting.
+//!
+//! `kyxen` opens the window, `kyxen --tray` starts hidden in the tray.
+//! Closing the window keeps the app in the tray; "Beenden" in the tray menu
+//! quits. Starting it again shows the running window.
 
 mod app;
+mod instance;
 mod labels;
+mod tray;
 
 mod ui {
     #![allow(missing_debug_implementations, clippy::all, clippy::pedantic)]
@@ -66,6 +72,13 @@ fn main() -> Result<(), slint::PlatformError> {
         .with_target(false)
         .init();
 
+    let shot = parse_shot();
+    let start_hidden = std::env::args().any(|a| a == "--tray");
+    if shot.is_none() && instance::signal_running() {
+        // an instance is already running; it shows its window
+        return Ok(());
+    }
+
     let window = AppWindow::new()?;
     let app = app::App::new(&window);
     app::connect(&window, &app);
@@ -81,7 +94,23 @@ fn main() -> Result<(), slint::PlatformError> {
         });
     }
 
-    if let Some(shot) = parse_shot() {
+    // Tray icon; without a tray host the window just closes as usual.
+    let tray = if shot.is_none() {
+        use ksni::blocking::TrayMethods;
+        tray::KyxenTray::new(window.as_weak())
+            .spawn()
+            .inspect_err(|e| tracing::warn!("no tray icon: {e}"))
+            .ok()
+    } else {
+        None
+    };
+    let has_tray = tray.is_some();
+    app.borrow_mut().set_tray(tray);
+    if shot.is_none() {
+        instance::listen(window.as_weak());
+    }
+
+    if let Some(shot) = shot {
         app.borrow_mut().read_only = true;
         let g = window.global::<Ui>();
         g.set_tab(shot.tab);
@@ -101,5 +130,17 @@ fn main() -> Result<(), slint::PlatformError> {
         });
     }
 
-    window.run()
+    if has_tray {
+        window
+            .window()
+            .on_close_requested(|| slint::CloseRequestResponse::HideWindow);
+    }
+    if !(has_tray && start_hidden) {
+        window.show()?;
+    }
+    if has_tray {
+        slint::run_event_loop_until_quit()
+    } else {
+        slint::run_event_loop()
+    }
 }

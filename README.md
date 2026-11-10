@@ -27,14 +27,31 @@ The G915 over its LIGHTSPEED receiver is not supported yet.
 Config files and the control socket are compatible with Python Kyxen, so its
 GUI keeps working with this daemon.
 
-## Build
+## Build and install
 
 ```bash
 cargo build --release
-./target/release/kyxend --help
+./target/release/kyxend install
 ```
 
-Requires Rust 1.88+ (edition 2024).
+Requires Rust 1.88+ (edition 2024). `install` works per user, without root:
+
+- copies `kyxend` and the `kyxen` app to `~/.local/bin`
+- installs and starts the systemd user service `kyxend.service` (runs with your desktop session)
+- adds Kyxen to the app launcher and starts the tray icon at login (`--no-tray` to skip)
+
+`kyxend uninstall` removes all of it; your config in `~/.config/kyxen` stays.
+
+## The app
+
+`kyxen` opens the settings app: profiles, G-key macros (record a combo by
+pressing it), per-key painting, effects with live preview. Changes are saved
+automatically and applied by the daemon immediately. Closing the window keeps
+Kyxen in the tray; the tray menu switches profiles. `kyxen --tray` starts
+hidden.
+
+![Keys](docs/screenshots/keys.png)
+![Lighting](docs/screenshots/lighting.png)
 
 ## Permissions
 

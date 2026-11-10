@@ -4,6 +4,7 @@
 mod actions;
 mod daemon;
 mod device;
+mod install;
 mod ipc;
 mod keyboard;
 mod passthrough;
@@ -45,6 +46,15 @@ enum Cmd {
     Switch { profile: String },
     /// Make the running daemon reload its config.
     Reload,
+    /// Install for this user: binaries to ~/.local/bin, systemd user service,
+    /// app launcher entry and tray autostart.
+    Install {
+        /// Don't start the tray icon at login.
+        #[arg(long)]
+        no_tray: bool,
+    },
+    /// Remove everything `install` created (config files are kept).
+    Uninstall,
 }
 
 fn main() -> Result<()> {
@@ -63,6 +73,8 @@ fn main() -> Result<()> {
         Cmd::Status => client(&ipc::Request::Status),
         Cmd::Switch { profile } => client(&ipc::Request::Switch { profile }),
         Cmd::Reload => client(&ipc::Request::Reload),
+        Cmd::Install { no_tray } => install::install(!no_tray),
+        Cmd::Uninstall => install::uninstall(),
     }
 }
 

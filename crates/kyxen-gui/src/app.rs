@@ -207,6 +207,8 @@ pub struct App {
     recording: Option<Recording>,
     /// Never write files (screenshot mode).
     pub read_only: bool,
+    tray: Option<ksni::blocking::Handle<crate::tray::KyxenTray>>,
+    keyboard: Option<String>,
 }
 
 pub type Shared = Rc<RefCell<App>>;
@@ -260,6 +262,8 @@ impl App {
             save_timer: Timer::default(),
             recording: None,
             read_only: false,
+            tray: None,
+            keyboard: None,
         }));
         {
             let mut a = app.borrow_mut();
@@ -284,6 +288,26 @@ impl App {
             a.push_all();
         }
         app
+    }
+
+    pub fn set_tray(&mut self, tray: Option<ksni::blocking::Handle<crate::tray::KyxenTray>>) {
+        self.tray = tray;
+        self.sync_tray();
+    }
+
+    fn sync_tray(&self) {
+        let Some(tray) = &self.tray else { return };
+        let profiles: Vec<(String, String)> = self
+            .profiles
+            .iter()
+            .map(|p| (p.name.clone(), p.display_name().to_owned()))
+            .collect();
+        let (active, keyboard) = (self.cur, self.keyboard.clone());
+        tray.update(move |t| {
+            t.profiles = profiles;
+            t.active = active;
+            t.keyboard = keyboard;
+        });
     }
 
     fn ui(&self) -> AppWindow {
@@ -366,6 +390,10 @@ impl App {
 
     /// Recolour the on-screen keyboard (called ~30×/s).
     pub fn tick(&mut self) {
+        // nothing to draw while the window sits in the tray
+        if !self.ui.upgrade().is_some_and(|w| w.window().is_visible()) {
+            return;
+        }
         self.tick = self.tick.wrapping_add(1);
         let t = self.effect_started.elapsed().as_secs_f64();
         let cfg = self.profile().lighting.clone();
@@ -458,6 +486,7 @@ impl App {
         g.set_profiles(ModelRc::from(Rc::new(VecModel::from(items))));
         g.set_current_profile(self.cur as i32);
         g.set_layout_name(self.layout.to_uppercase().into());
+        self.sync_tray();
     }
 
     fn summary(&self, a: &MacroAction) -> String {
@@ -707,6 +736,11 @@ impl App {
         let ui = self.ui();
         let g = ui.global::<Ui>();
         g.set_connected(status.is_some());
+        let keyboard = status.as_ref().and_then(|s| s.keyboard.clone());
+        if keyboard != self.keyboard {
+            self.keyboard = keyboard;
+            self.sync_tray();
+        }
         g.set_keyboard_name(
             status
                 .as_ref()
