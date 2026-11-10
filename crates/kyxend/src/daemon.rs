@@ -225,10 +225,7 @@ impl Daemon {
         let Some(conn) = self.conn.take() else { return };
         let _ = self.actions.send(Job::ReleaseAll);
         if restore {
-            let slot = self.global.slot_of(&self.active).unwrap_or(1);
-            let _ = conn
-                .commands
-                .send(keyboard::Command::Shutdown { restore_slot: slot });
+            let _ = conn.commands.send(keyboard::Command::Shutdown);
         }
         drop(conn.commands);
         for t in conn.threads {

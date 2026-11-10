@@ -26,7 +26,6 @@ const FRAME: Duration = Duration::from_millis(50);
 const IDLE: Duration = Duration::from_millis(250);
 
 const GKEY_FN_SOFTWARE_CONTROL: u8 = 2;
-const MKEYS_FN_SET_LED: u8 = 1;
 
 /// G Hub's lighting init on the G815, addressed by fixed feature index.
 const G815_LIGHTING_INIT: [[u8; 4]; 2] = [[0x11, 0xff, 0x09, 0x0f], [0x11, 0xff, 0x03, 0x2e]];
@@ -34,12 +33,12 @@ const G815_LIGHTING_INIT: [[u8; 4]; 2] = [[0x11, 0xff, 0x09, 0x0f], [0x11, 0xff,
 #[derive(Debug)]
 pub enum Command {
     Lighting(LightingConfig),
-    /// Light the LED of M-key slot `n` (1-based), or none.
+    /// Show M-key slot `n` (1-based) as active. The keyboard lights M-LEDs
+    /// only for the active *onboard* profile (MKEYS `setLED` is ignored in
+    /// onboard mode), so this activates that onboard profile and redraws.
     MKeyLed(Option<u8>),
-    /// Leave the keyboard in onboard mode on this profile slot and stop.
-    Shutdown {
-        restore_slot: u8,
-    },
+    /// Restore the onboard profile that was active before we started, then stop.
+    Shutdown,
 }
 
 /// Runtime feature indices.
@@ -49,6 +48,8 @@ struct Features {
     mkeys: Option<u8>,
     per_key: Option<u8>,
     onboard: Option<OnboardProfiles>,
+    /// Onboard profile active before the daemon took over.
+    initial_profile: u8,
 }
 
 pub fn spawn(kb: &Keyboard, events: Sender<Event>) -> Result<(Sender<Command>, JoinHandle<()>)> {
@@ -77,11 +78,12 @@ fn setup<T: Transport>(dev: &mut HidppDevice<T>, kb: &Keyboard) -> Result<Featur
     let onboard = OnboardProfiles::open(dev)
         .inspect_err(|e| warn!("onboard profiles unavailable: {e}"))
         .ok();
-    let f = Features {
+    let mut f = Features {
         gkey: optional(dev, FeatureId::GKEY),
         mkeys: optional(dev, FeatureId::MKEYS),
         per_key: optional(dev, FeatureId::PER_KEY_LIGHTING_V2),
         onboard,
+        initial_profile: 1,
     };
     info!(gkey = ?f.gkey, mkeys = ?f.mkeys, per_key = ?f.per_key, onboard = ?f.onboard.map(|o| o.index), "HID++ features");
 
@@ -90,7 +92,9 @@ fn setup<T: Transport>(dev: &mut HidppDevice<T>, kb: &Keyboard) -> Result<Featur
             info!("waiting for the keyboard to settle after the flash write");
             thread::sleep(Duration::from_millis(1500));
         }
-        if op.mode(dev)? != Mode::Onboard {
+        if op.mode(dev)? == Mode::Onboard {
+            f.initial_profile = op.current_profile(dev)?.max(1);
+        } else {
             op.set_mode(dev, Mode::Onboard)?;
         }
     }
@@ -116,6 +120,7 @@ struct Worker<T> {
     gkeys: KeyTracker,
     mkeys: KeyTracker,
     lighting: Option<LightingConfig>,
+    onboard_slot: Option<u8>,
     started: Instant,
     last_frame: Option<Frame>,
     next_frame: Instant,
@@ -130,6 +135,7 @@ impl<T: Transport> Worker<T> {
             gkeys: KeyTracker::default(),
             mkeys: KeyTracker::default(),
             lighting: None,
+            onboard_slot: None,
             started: Instant::now(),
             last_frame: None,
             next_frame: Instant::now(),
@@ -140,10 +146,11 @@ impl<T: Transport> Worker<T> {
         loop {
             loop {
                 match commands.try_recv() {
-                    Ok(Command::Shutdown { restore_slot }) => return self.shutdown(restore_slot),
+                    Ok(Command::Shutdown) | Err(TryRecvError::Disconnected) => {
+                        return self.shutdown();
+                    }
                     Ok(cmd) => self.handle(cmd),
                     Err(TryRecvError::Empty) => break,
-                    Err(TryRecvError::Disconnected) => return self.shutdown(1),
                 }
             }
             if Instant::now() >= self.next_frame {
@@ -168,7 +175,7 @@ impl<T: Transport> Worker<T> {
                 self.next_frame = Instant::now();
             }
             Command::MKeyLed(slot) => self.set_mkey_led(slot),
-            Command::Shutdown { .. } => unreachable!("handled in run"),
+            Command::Shutdown => unreachable!("handled in run"),
         }
     }
 
@@ -193,10 +200,20 @@ impl<T: Transport> Worker<T> {
     }
 
     fn set_mkey_led(&mut self, slot: Option<u8>) {
-        let Some(idx) = self.f.mkeys else { return };
-        let mask = slot.map_or(0, |s| 1u8 << (s - 1));
-        if let Err(e) = self.dev.request(idx, MKEYS_FN_SET_LED, &[mask]) {
-            warn!("could not set M-key LED: {e}");
+        let (Some(op), Some(slot)) = (self.f.onboard, slot) else {
+            return;
+        };
+        if self.onboard_slot == Some(slot) {
+            return;
+        }
+        match op.set_current_profile(&mut self.dev, slot.clamp(1, 3)) {
+            Ok(()) => {
+                self.onboard_slot = Some(slot);
+                // The onboard profile brings its own lighting; draw ours again.
+                self.last_frame = None;
+                self.next_frame = Instant::now();
+            }
+            Err(e) => warn!("could not activate onboard profile {slot} for the M-key LED: {e}"),
         }
     }
 
@@ -218,10 +235,11 @@ impl<T: Transport> Worker<T> {
         Ok(())
     }
 
-    fn shutdown(&mut self, slot: u8) -> Result<()> {
+    fn shutdown(&mut self) -> Result<()> {
+        let slot = self.f.initial_profile.clamp(1, 3);
         if let Some(op) = self.f.onboard {
             // Back to the stored profile so the keyboard lights up on its own.
-            op.restore(&mut self.dev, slot.clamp(1, 3))
+            op.restore(&mut self.dev, slot)
                 .context("restore onboard mode")?;
         }
         info!("keyboard handed back to onboard profile {slot}");
@@ -314,13 +332,41 @@ mod tests {
     }
 
     #[test]
-    fn shutdown_returns_to_onboard_mode() {
+    fn shutdown_restores_mode_and_initial_profile() {
         let mut kb = MockKeyboard::g915();
-        kb.mode = 2; // left in host mode by something else
+        kb.current_profile = 2; // the user was on onboard profile 2
         let (mut w, _) = worker(kb);
-        w.dev.transport_mut().mode = 2;
-        w.shutdown(2).unwrap();
+        w.set_mkey_led(Some(3));
+        w.dev.transport_mut().mode = 2; // something put it into host mode
+        w.shutdown().unwrap();
         assert_eq!(w.dev.transport_mut().mode, 1);
         assert_eq!(w.dev.transport_mut().current_profile, 2);
+    }
+
+    #[test]
+    fn mkey_led_activates_onboard_profile_and_redraws() {
+        let (mut w, _) = worker(MockKeyboard::g915());
+        w.handle(Command::Lighting(LightingConfig::default()));
+        w.render().unwrap();
+        let before = w.dev.transport_mut().sent.len();
+        w.set_mkey_led(Some(2));
+        assert_eq!(w.dev.transport_mut().current_profile, 2);
+        assert_eq!(w.dev.transport_mut().mode, 1, "stays in onboard mode");
+        w.render().unwrap();
+        let commits = w.dev.transport_mut().sent[before..]
+            .iter()
+            .filter(|r| r[2] == 0x0a && r[3] == 0x7e)
+            .count();
+        assert_eq!(
+            commits, 1,
+            "lighting redrawn after the onboard profile switch"
+        );
+        let n = w.dev.transport_mut().sent.len();
+        w.set_mkey_led(Some(2));
+        assert_eq!(
+            w.dev.transport_mut().sent.len(),
+            n,
+            "same slot is not switched again"
+        );
     }
 }
