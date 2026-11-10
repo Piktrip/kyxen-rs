@@ -101,6 +101,15 @@ fn main() -> Result<(), slint::PlatformError> {
     }
 
     let window = AppWindow::new()?;
+    // Claim the instance name first: registering the tray icon can take a
+    // while (D-Bus), and a second `kyxen` started meanwhile must find us.
+    if shot.is_none() && !instance::listen(window.as_weak()) {
+        // lost the race against another instance starting right now
+        if !start_hidden {
+            instance::signal_running();
+        }
+        return Ok(());
+    }
     let app = app::App::new(&window);
     app::connect(&window, &app);
     let _status = app::start_status_polling(&app);
@@ -121,9 +130,6 @@ fn main() -> Result<(), slint::PlatformError> {
     if start_hidden && !has_tray {
         // started for the tray at login, but the tray is switched off
         return Ok(());
-    }
-    if shot.is_none() {
-        instance::listen(window.as_weak());
     }
 
     if let Some(shot) = shot {
