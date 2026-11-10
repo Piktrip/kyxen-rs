@@ -17,6 +17,28 @@ pub struct KeyDef {
     pub h: f32,
 }
 
+/// Physical key arrangement: ISO (tall Enter, `<>` next to left Shift) or
+/// ANSI (wide Enter, `\` above it).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Form {
+    #[default]
+    Iso,
+    Ansi,
+}
+
+impl Form {
+    /// The form from the `keyboard_form` setting (`"iso"` / `"ansi"`), else
+    /// guessed from the text layout: US keyboards are ANSI.
+    pub fn resolve(setting: Option<&str>, layout: &str) -> Self {
+        match setting {
+            Some("ansi") => Self::Ansi,
+            Some("iso") => Self::Iso,
+            _ if layout == "us" => Self::Ansi,
+            _ => Self::Iso,
+        }
+    }
+}
+
 /// A keyboard's keys with lookup helpers.
 #[derive(Debug)]
 pub struct Keymap {
@@ -49,10 +71,26 @@ impl Keymap {
         }
     }
 
-    /// The G815 / G915 full-size layout.
+    /// The G815 / G915 full-size layout, ISO form (DE, AT, UK …).
     pub fn g815() -> &'static Self {
         static MAP: OnceLock<Keymap> = OnceLock::new();
         MAP.get_or_init(|| Self::build(g815::KEYS))
+    }
+
+    /// The G815 / G915 in ANSI form (US): wide Enter, wide left Shift, `\`
+    /// above Enter, no `<>` key.
+    pub fn g815_ansi() -> &'static Self {
+        static MAP: OnceLock<Keymap> = OnceLock::new();
+        static KEYS: OnceLock<Vec<KeyDef>> = OnceLock::new();
+        MAP.get_or_init(|| Self::build(KEYS.get_or_init(|| g815::ansi(g815::KEYS))))
+    }
+
+    /// The G815 / G915 layout for `form`.
+    pub fn g815_for(form: Form) -> &'static Self {
+        match form {
+            Form::Iso => Self::g815(),
+            Form::Ansi => Self::g815_ansi(),
+        }
     }
 
     pub fn get(&self, name: &str) -> Option<&KeyDef> {
@@ -76,17 +114,44 @@ impl Keymap {
 mod tests {
     use super::*;
 
-    #[test]
-    fn g815_map_is_consistent() {
-        let map = Keymap::g815();
-        assert_eq!(map.get("A").and_then(|k| k.led), Some(0x01));
-        assert_eq!(map.get("G1").and_then(|k| k.led), Some(0xb4));
-        assert!(map.lit().count() > 100);
+    fn unique_leds(map: &Keymap) {
         let mut leds: Vec<u8> = map.lit().map(|(_, l)| l).collect();
         leds.sort_unstable();
         let unique = leds.len();
         leds.dedup();
         assert_eq!(leds.len(), unique, "duplicate LED ids");
+    }
+
+    #[test]
+    fn ansi_map_reshapes_enter_and_shift() {
+        let iso = Keymap::g815();
+        let ansi = Keymap::g815_ansi();
+        unique_leds(ansi);
+        assert!(ansi.get("HASH").is_none() && ansi.get("BACKSLASH").is_none());
+        assert_eq!(ansi.keys.len(), iso.keys.len() - 1);
+        let bs = ansi.get("ANSI_BACKSLASH").expect("backslash above Enter");
+        let rb = ansi.get("R_BRACKET").unwrap();
+        assert_eq!((bs.y, bs.x), (rb.y, rb.x + rb.w));
+        let enter = ansi.get("RETURN").unwrap();
+        let quote = ansi.get("APOSTROPHE").unwrap();
+        assert_eq!((enter.y, enter.x), (quote.y, quote.x + quote.w));
+        // rows still end flush with the right Shift
+        let right = |k: &KeyDef| k.x + k.w;
+        let rs = right(ansi.get("R_SHIFT").unwrap());
+        assert!((right(bs) - rs).abs() < 1e-3 && (right(enter) - rs).abs() < 1e-3);
+        assert_eq!(right(ansi.get("L_SHIFT").unwrap()), ansi.get("Z").unwrap().x);
+        assert_eq!(Form::resolve(None, "us"), Form::Ansi);
+        assert_eq!(Form::resolve(None, "de"), Form::Iso);
+        assert_eq!(Form::resolve(Some("iso"), "us"), Form::Iso);
+    }
+
+    #[test]
+    fn g815_map_is_consistent() {
+        let map = Keymap::g815();
+        unique_leds(map);
+        assert_eq!(map.get("A").and_then(|k| k.led), Some(0x01));
+        assert_eq!(map.get("G1").and_then(|k| k.led), Some(0xb4));
+        assert!(map.lit().count() > 100);
         let (lx, _) = map.centre("ESC");
         let (rx, _) = map.centre("NUM_MINUS");
         assert!(lx < rx);

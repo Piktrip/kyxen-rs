@@ -1,6 +1,7 @@
 import { LineEdit, ComboBox, ScrollView } from "std-widgets.slint";
 import { Theme } from "theme.slint";
 import { Ui } from "state.slint";
+import { Tr } from "tr.slint";
 import { Button, ButtonKind, Card, Chip, Label, SectionTitle, Toggle } from "widgets.slint";
 
 component Row inherits HorizontalLayout {
@@ -44,10 +45,10 @@ export component SettingsPage inherits ScrollView {
                 padding: 24px;
                 spacing: 20px;
                 SectionTitle {
-                    text: "PROFIL";
+                    text: @tr("PROFILE");
                 }
                 Row {
-                    title: "Name";
+                    title: @tr("Name");
                     LineEdit {
                         font-size: Theme.font-md;
                         text <=> Ui.p-name;
@@ -55,8 +56,8 @@ export component SettingsPage inherits ScrollView {
                     }
                 }
                 Row {
-                    title: "Farbe";
-                    hint: "Erkennungsfarbe in der Liste";
+                    title: @tr("Color");
+                    hint: @tr("Marker color in the list");
                     HorizontalLayout {
                         spacing: 8px;
                         alignment: start;
@@ -76,12 +77,12 @@ export component SettingsPage inherits ScrollView {
                     }
                 }
                 Row {
-                    title: "M-Taste";
-                    hint: "Taste auf der Tastatur, die dieses Profil aktiviert";
+                    title: @tr("M-key");
+                    hint: @tr("Key on the keyboard that activates this profile");
                     HorizontalLayout {
                         spacing: 6px;
                         alignment: start;
-                        for s[i] in ["Keine", "M1", "M2", "M3"]: Chip {
+                        for s[i] in [@tr("None"), "M1", "M2", "M3"]: Chip {
                             width: 76px;
                             text: s;
                             selected: Ui.p-slot == i;
@@ -90,15 +91,15 @@ export component SettingsPage inherits ScrollView {
                     }
                 }
                 Row {
-                    title: "Profil löschen";
-                    hint: "Entfernt die Profildatei";
+                    title: @tr("Delete profile");
+                    hint: @tr("Removes the profile file");
                     HorizontalLayout {
                         alignment: start;
                         Button {
                             kind: ButtonKind.danger;
                             has-icon: true;
                             icon: @image-url("icons/trash.svg");
-                            text: "Löschen";
+                            text: @tr("Delete");
                             enabled: Ui.profiles.length > 1;
                             clicked => { Ui.delete-profile(); }
                         }
@@ -112,23 +113,37 @@ export component SettingsPage inherits ScrollView {
                 padding: 24px;
                 spacing: 20px;
                 SectionTitle {
-                    text: "TASTATUR";
+                    text: @tr("KEYBOARD");
                 }
                 Row {
-                    title: "Layout für Text-Makros";
-                    hint: "Automatisch = Systemeinstellung";
+                    title: @tr("Layout for text macros");
+                    hint: @tr("Automatic = system setting");
                     ComboBox {
-                        model: Ui.layout-options;
+                        model: Tr.layouts;
                         current-index: Ui.layout-choice;
                         selected => { Ui.set-layout(self.current-index); }
                     }
                 }
                 Row {
-                    title: "Gerät";
+                    title: @tr("Key shape");
+                    hint: @tr("ISO: tall Enter, <> key (DE, AT, UK) · ANSI: wide Enter (US)");
+                    HorizontalLayout {
+                        spacing: 6px;
+                        alignment: start;
+                        for s[i] in [@tr("Automatic"), "ISO", "ANSI"]: Chip {
+                            width: 104px;
+                            text: s;
+                            selected: Ui.form-choice == i;
+                            clicked => { Ui.set-form(i); }
+                        }
+                    }
+                }
+                Row {
+                    title: @tr("Device");
                     Label {
                         text: Ui.connected
-                            ? (Ui.keyboard-name != "" ? Ui.keyboard-name : "Daemon läuft, keine Tastatur")
-                            : "Daemon läuft nicht – starte kyxend";
+                            ? (Ui.keyboard-name != "" ? Ui.keyboard-name : @tr("Daemon running, no keyboard"))
+                            : @tr("Daemon not running – start kyxend");
                         font-size: Theme.font-md;
                         color: Ui.connected ? Theme.text : Theme.danger;
                     }
@@ -141,11 +156,26 @@ export component SettingsPage inherits ScrollView {
                 padding: 24px;
                 spacing: 20px;
                 SectionTitle {
-                    text: "APP";
+                    text: @tr("APP");
                 }
                 Row {
-                    title: "Tray-Icon";
-                    hint: "Kyxen bleibt im Systemtray, wenn du das Fenster schließt";
+                    title: @tr("Language");
+                    hint: @tr("Automatic = system language");
+                    HorizontalLayout {
+                        spacing: 6px;
+                        alignment: start;
+                        // language names stay in their own language
+                        for s[i] in [@tr("Automatic"), "Deutsch", "English"]: Chip {
+                            width: 104px;
+                            text: s;
+                            selected: Ui.language-choice == i;
+                            clicked => { Ui.set-language(i); }
+                        }
+                    }
+                }
+                Row {
+                    title: @tr("Tray icon");
+                    hint: @tr("Kyxen stays in the system tray when you close the window");
                     HorizontalLayout {
                         alignment: start;
                         Toggle {
@@ -156,8 +186,8 @@ export component SettingsPage inherits ScrollView {
                     }
                 }
                 if Ui.tray-enabled: Row {
-                    title: "Beim Anmelden starten";
-                    hint: "Tray-Icon automatisch nach dem Login";
+                    title: @tr("Start at login");
+                    hint: @tr("Tray icon right after you log in");
                     HorizontalLayout {
                         alignment: start;
                         Toggle {
@@ -175,10 +205,10 @@ export component SettingsPage inherits ScrollView {
                 padding: 24px;
                 spacing: 8px;
                 SectionTitle {
-                    text: "ÜBER";
+                    text: @tr("ABOUT");
                 }
                 Label {
-                    text: "kyxen " + Ui.version + " · GPL-3.0 · basiert auf Kyxen von Wade Quinn";
+                    text: @tr("kyxen {} · GPL-3.0 · based on Kyxen by Wade Quinn", Ui.version);
                     font-size: Theme.font-md;
                 }
             }

@@ -51,7 +51,7 @@ component EffectCard inherits Rectangle {
 }
 
 export component LightingPanel inherits ScrollView {
-    property <[string]> names: ["Statisch", "Atmen", "Welle", "Regenbogen", "Farbwechsel", "Animation"];
+    property <[string]> names: [@tr("Static"), @tr("Breathing"), @tr("Wave"), @tr("Rainbow"), @tr("Color cycle"), @tr("Animation")];
 
     VerticalLayout {
         alignment: start;
@@ -59,7 +59,7 @@ export component LightingPanel inherits ScrollView {
         spacing: 18px;
 
         Text {
-            text: "Effekt";
+            text: @tr("Effect");
             font-family: Theme.font;
             font-size: Theme.font-xl;
             font-weight: 700;
@@ -99,7 +99,7 @@ export component LightingPanel inherits ScrollView {
         if Ui.l-effect == 0: VerticalLayout {
             spacing: 14px;
             SectionTitle {
-                text: "PINSELFARBE";
+                text: @tr("BRUSH COLOR");
             }
             ColorPicker { }
             HorizontalLayout {
@@ -109,7 +109,7 @@ export component LightingPanel inherits ScrollView {
                     kind: ButtonKind.secondary;
                     has-icon: true;
                     icon: @image-url("icons/fill.svg");
-                    text: "Alle Tasten";
+                    text: @tr("All keys");
                     font-size: Theme.font-sm;
                     clicked => { Ui.fill-all(); }
                 }
@@ -118,13 +118,13 @@ export component LightingPanel inherits ScrollView {
                     kind: ButtonKind.ghost;
                     has-icon: true;
                     icon: @image-url("icons/eraser.svg");
-                    text: "Bemalung löschen";
+                    text: @tr("Clear painting");
                     font-size: Theme.font-sm;
                     clicked => { Ui.clear-paint(); }
                 }
             }
             Label {
-                text: "Klick oder zieh über Tasten, um sie mit der Pinselfarbe zu bemalen.";
+                text: @tr("Click or drag across keys to paint them with the brush color.");
                 wrap: word-wrap;
             }
         }
@@ -132,7 +132,7 @@ export component LightingPanel inherits ScrollView {
         if Ui.l-effect == 1 || Ui.l-effect == 2: VerticalLayout {
             spacing: 14px;
             SectionTitle {
-                text: Ui.l-effect == 1 ? "FARBE" : "FARBEN";
+                text: Ui.l-effect == 1 ? @tr("COLOR") : @tr("COLORS");
             }
             if Ui.l-stops.length > 1: HorizontalLayout {
                 spacing: 8px;
@@ -153,7 +153,7 @@ export component LightingPanel inherits ScrollView {
                             background: c;
                         }
                         Text {
-                            text: i == 0 ? "Farbe 1" : "Farbe 2";
+                            text: i == 0 ? @tr("Color 1") : @tr("Color 2");
                             font-family: Theme.font;
                             font-size: Theme.font-sm;
                             color: Ui.l-stop == i ? Theme.text : Theme.text-dim;
@@ -171,18 +171,18 @@ export component LightingPanel inherits ScrollView {
 
         if Ui.l-effect == 3 || Ui.l-effect == 4: Label {
             text: Ui.l-effect == 3
-                ? "Der Regenbogen läuft durch alle Farben."
-                : "Alle Tasten wechseln gemeinsam durch das Farbspektrum.";
+                ? @tr("The rainbow runs through every color.")
+                : @tr("All keys cycle through the spectrum together.");
             wrap: word-wrap;
         }
 
         if Ui.l-effect == 5: Label {
-            text: "Animationen mit eigenen Folien kommen mit dem Folien-Editor. Bis dahin läuft eine Beispiel-Animation.";
+            text: @tr("Animations with your own slides come with the slide editor. Until then, a sample animation plays.");
             wrap: word-wrap;
         }
 
         if Ui.l-effect >= 1 && Ui.l-effect <= 4: Slider {
-            label: "Geschwindigkeit";
+            label: @tr("Speed");
             display: Ui.l-speed-text;
             value: Ui.l-speed;
             changed(v) => { Ui.set-speed(v); }
@@ -191,7 +191,7 @@ export component LightingPanel inherits ScrollView {
         if Ui.l-effect == 2 || Ui.l-effect == 3: VerticalLayout {
             spacing: 10px;
             Text {
-                text: "Richtung";
+                text: @tr("Direction");
                 font-family: Theme.font;
                 font-size: Theme.font-md;
                 font-weight: 600;
@@ -216,7 +216,7 @@ export component LightingPanel inherits ScrollView {
         }
 
         Slider {
-            label: "Helligkeit";
+            label: @tr("Brightness");
             display: Math.round(Ui.l-brightness * 100) + " %";
             value: Ui.l-brightness;
             changed(v) => { Ui.set-brightness(v); }

@@ -50,6 +50,14 @@ automatically and applied by the daemon immediately. Closing the window keeps
 Kyxen in the tray; the tray menu switches profiles. `kyxen --tray` starts
 hidden.
 
+The app speaks English and German (follows the system language, or pick one
+under Settings → App). The on-screen keyboard comes in ISO (DE, AT, UK) and
+ANSI (US) form; by default US layouts get ANSI. On an ANSI board the key above
+Enter is `ANSI_BACKSLASH` in profile files (not yet tested on hardware).
+
+More languages: copy `crates/kyxen-gui/lang/de` to `lang/<code>` and translate
+the `.po` file.
+
 ![Keys](docs/screenshots/keys.png)
 ![Lighting](docs/screenshots/lighting.png)
 
@@ -89,6 +97,9 @@ Set `RUST_LOG=debug` for more detail.
 active_profile = "default"
 keyboard_layout = "at"          # optional, else taken from localectl
 keyboard_variant = "nodeadkeys" # optional
+keyboard_form = "ansi"          # optional: iso | ansi, else ANSI for "us"
+language = "en"                 # optional app language: de | en, else system
+tray = false                    # optional: no tray icon
 
 [profile_slots]
 m1 = "default"
@@ -143,6 +154,7 @@ animations in `[[lighting.animation.slides]]` with `keys`, `hold`,
 | `kyxen-hidpp` | HID++ 2.0: transport, feature lookup, onboard profiles, lighting reports, notifications. Includes an in-memory G915 for tests. |
 | `kyxen-core` | Config files, text layouts, macro translation, key geometry, lighting effects. No I/O. |
 | `kyxend` | The daemon and CLI. |
+| `kyxen-gui` | The `kyxen` app (Slint) and tray icon. |
 
 ```bash
 cargo test --workspace

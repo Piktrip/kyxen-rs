@@ -8,6 +8,7 @@ import { LightingPanel } from "lighting-panel.slint";
 import { SettingsPage } from "settings-page.slint";
 
 export { Ui }
+export { Tr } from "tr.slint";
 
 component GKeyCard inherits Rectangle {
     in property <GKeyInfo> info;
@@ -77,10 +78,10 @@ component Toolbar inherits Rectangle {
         padding: 6px;
         spacing: 4px;
         for t[i] in [
-            { icon: @image-url("icons/brush.svg"), label: "Pinsel" },
-            { icon: @image-url("icons/fill.svg"), label: "Füllen" },
-            { icon: @image-url("icons/pipette.svg"), label: "Pipette" },
-            { icon: @image-url("icons/eraser.svg"), label: "Radierer" },
+            { icon: @image-url("icons/brush.svg"), label: @tr("Brush") },
+            { icon: @image-url("icons/fill.svg"), label: @tr("Fill") },
+            { icon: @image-url("icons/pipette.svg"), label: @tr("Eyedropper") },
+            { icon: @image-url("icons/eraser.svg"), label: @tr("Eraser") },
         ]: Rectangle {
             width: tl.preferred-width + 24px;
             border-radius: Theme.radius-sm;
@@ -154,9 +155,9 @@ component StatusBar inherits Rectangle {
                 drop-shadow-color: self.background;
             }
             Label {
-                text: !Ui.connected ? "Daemon läuft nicht"
-                    : Ui.keyboard-name != "" ? Ui.keyboard-name + " verbunden"
-                    : "Warte auf Tastatur";
+                text: !Ui.connected ? @tr("Daemon not running")
+                    : Ui.keyboard-name != "" ? @tr("{} connected", Ui.keyboard-name)
+                    : @tr("Waiting for keyboard");
                 color: Theme.text;
             }
         }
@@ -167,7 +168,7 @@ component StatusBar inherits Rectangle {
             background: Theme.border-strong;
         }
         Label {
-            text: "Layout: " + Ui.layout-name;
+            text: @tr("Layout: {}", Ui.layout-name);
         }
         Rectangle {
             width: 1px;
@@ -231,9 +232,9 @@ export component AppWindow inherits Window {
                     alignment: center;
                     Tabs {
                         items: [
-                            { icon: @image-url("icons/keyboard.svg"), label: "Tasten" },
-                            { icon: @image-url("icons/light.svg"), label: "Licht" },
-                            { icon: @image-url("icons/settings.svg"), label: "Einstellungen" },
+                            { icon: @image-url("icons/keyboard.svg"), label: @tr("Keys") },
+                            { icon: @image-url("icons/light.svg"), label: @tr("Lighting") },
+                            { icon: @image-url("icons/settings.svg"), label: @tr("Settings") },
                         ];
                         current <=> Ui.tab;
                     }
@@ -250,7 +251,7 @@ export component AppWindow inherits Window {
                         border-width: 1px;
                         border-color: Theme.border;
                         hint := Label {
-                            text: "Live-Vorschau · zum Bemalen einzelner Tasten auf „Statisch“ wechseln";
+                            text: @tr("Live preview · switch to “Static” to paint single keys");
                         }
                     }
                 }

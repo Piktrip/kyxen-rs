@@ -1,0 +1,40 @@
+// Texts the Rust side shows (save state, toasts, G-key summaries, tray menu),
+// so they are translated together with the rest of the UI. Rust reads them
+// when it needs them, so a language switch applies on the next use.
+
+export global Tr {
+    out property <string> saved: @tr("Saved automatically");
+    out property <string> saving: @tr("Saving …");
+    out property <string> save-failed: @tr("Saving failed");
+
+    out property <string> no-text: @tr("no text");
+    out property <string> no-keys: @tr("no keys");
+    out property <string> no-command: @tr("no command");
+    out property <string> unassigned: @tr("not assigned");
+    out property <[string]> mouse-buttons: [@tr("Left"), @tr("Right"), @tr("Middle"), @tr("Button 4"), @tr("Button 5")];
+    out property <[string]> mouse-modes: [@tr("Click"), @tr("Double-click"), @tr("Hold")];
+
+    out property <[string]> layouts: [
+        @tr("Automatic"),
+        @tr("German (Austria)"),
+        @tr("German"),
+        @tr("English (US)"),
+        @tr("English (UK)"),
+    ];
+
+    out property <string> no-tray: @tr("No system tray found");
+    out property <string> tray-profile: @tr("Profile");
+    out property <string> tray-open: @tr("Open Kyxen");
+    out property <string> tray-quit: @tr("Quit");
+    out property <string> tray-no-keyboard: @tr("no keyboard");
+
+    public pure function triggered(n: int) -> string {
+        return @tr("G{} triggered", n);
+    }
+    public pure function deleted(name: string) -> string {
+        return @tr("“{}” deleted", name);
+    }
+    public pure function new-profile(n: int) -> string {
+        return @tr("Profile {}", n);
+    }
+}

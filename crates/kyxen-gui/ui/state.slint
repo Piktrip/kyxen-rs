@@ -109,13 +109,16 @@ export global Ui {
     in property <int> p-slot;
     in property <[color]> palette;
     in property <int> layout-choice;
-    in property <[string]> layout-options;
+    in property <int> form-choice;
+    in property <int> language-choice;
     in property <string> version;
     callback rename(string);
     callback set-slot(int);
     callback set-profile-color(color);
     callback delete-profile();
     callback set-layout(int);
+    callback set-form(int);
+    callback set-language(int);
     in property <bool> tray-enabled;
     in property <bool> tray-autostart;
     callback set-tray(bool);

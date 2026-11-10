@@ -95,7 +95,7 @@ export component Sidebar inherits Rectangle {
         }
 
         SectionTitle {
-            text: "PROFILE";
+            text: @tr("PROFILES");
         }
 
         for p[i] in Ui.profiles: ProfileCard {
@@ -121,7 +121,7 @@ export component Sidebar inherits Rectangle {
                     tint: Theme.text-dim;
                 }
                 Text {
-                    text: "Neues Profil";
+                    text: @tr("New profile");
                     font-family: Theme.font;
                     font-size: Theme.font-md;
                     color: Theme.text-dim;
@@ -137,7 +137,7 @@ export component Sidebar inherits Rectangle {
         Rectangle { }
 
         Text {
-            text: "M1–M3 auf der Tastatur wechseln\ndie zugewiesenen Profile.";
+            text: @tr("M1–M3 on the keyboard switch\nto the assigned profiles.");
             font-family: Theme.font;
             font-size: Theme.font-xs + 0.5px;
             color: Theme.text-faint;

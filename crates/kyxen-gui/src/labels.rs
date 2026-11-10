@@ -26,7 +26,7 @@ pub fn legend(name: &str, layout: &str) -> (String, String) {
             "R_BRACKET" => Some(pair("+", "*")),
             "SEMICOLON" => Some(one("Ö")),
             "APOSTROPHE" => Some(one("Ä")),
-            "HASH" => Some(pair("#", "'")),
+            "HASH" | "ANSI_BACKSLASH" => Some(pair("#", "'")),
             "BACKSLASH" => Some(pair("<", ">")),
             "Z" => Some(one("Y")),
             "Y" => Some(one("Z")),
@@ -52,6 +52,20 @@ pub fn legend(name: &str, layout: &str) -> (String, String) {
         }
     }
 
+    if layout == "gb" {
+        let gb = match name {
+            "BACKTICK" => Some(pair("`", "¬")),
+            "2" => Some(pair("2", "\"")),
+            "3" => Some(pair("3", "£")),
+            "APOSTROPHE" => Some(pair("'", "@")),
+            "HASH" | "ANSI_BACKSLASH" => Some(pair("#", "~")),
+            _ => None,
+        };
+        if let Some(l) = gb {
+            return l;
+        }
+    }
+
     match name {
         "BACKTICK" => pair("`", "~"),
         "1" => pair("1", "!"),
@@ -70,7 +84,7 @@ pub fn legend(name: &str, layout: &str) -> (String, String) {
         "R_BRACKET" => pair("]", "}"),
         "SEMICOLON" => pair(";", ":"),
         "APOSTROPHE" => pair("'", "\""),
-        "HASH" | "BACKSLASH" => pair("\\", "|"),
+        "HASH" | "BACKSLASH" | "ANSI_BACKSLASH" => pair("\\", "|"),
         "COMMA" => pair(",", "<"),
         "PERIOD" => pair(".", ">"),
         "R_SLASH" => pair("/", "?"),
@@ -160,6 +174,9 @@ mod tests {
         assert_eq!(legend("MINUS", "at"), ("ß".into(), "?".into()));
         assert_eq!(legend("Z", "us").0, "Z");
         assert_eq!(legend("NUM_7", "us").0, "7");
+        assert_eq!(legend("ANSI_BACKSLASH", "us").0, "\\");
+        assert_eq!(legend("ANSI_BACKSLASH", "de").0, "#");
+        assert_eq!(legend("3", "gb").1, "£");
         assert_eq!(chip("ctrl", "at"), "Strg");
         assert_eq!(chip("f13", "us"), "F13");
     }

@@ -55,6 +55,12 @@ pub struct GlobalConfig {
     pub keyboard_layout: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub keyboard_variant: Option<String>,
+    /// Physical form, `"iso"` or `"ansi"`; unset = ANSI for `us`, else ISO.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub keyboard_form: Option<String>,
+    /// App language (`"de"`, `"en"`); unset = system language.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
     /// Show the app's tray icon (and keep running when the window closes).
     #[serde(default = "yes", skip_serializing_if = "is_yes")]
     pub tray: bool,
@@ -76,6 +82,8 @@ impl Default for GlobalConfig {
             profile_slots: BTreeMap::new(),
             keyboard_layout: None,
             keyboard_variant: None,
+            keyboard_form: None,
+            language: None,
             tray: true,
         }
     }

@@ -132,3 +132,35 @@ pub static KEYS: &[KeyDef] = &[
     KeyDef { name: "NUM_0", led: Some(0x5f), x: 20.25, y: 5.74, w: 2.0, h: 1.0 },
     KeyDef { name: "NUM_PERIOD", led: Some(0x60), x: 22.25, y: 5.74, w: 1.0, h: 1.0 },
 ];
+
+/// ANSI variant of `iso`: drops the ISO-only `#` and `<>` keys, widens the
+/// left Shift, moves Enter down a row and puts `\` above it. LED zones follow
+/// the HID usage − 3 rule of all other keys (`\` = usage 0x31 → zone 0x2e).
+pub fn ansi(iso: &[KeyDef]) -> Vec<KeyDef> {
+    let mut keys = Vec::with_capacity(iso.len());
+    for k in iso {
+        match k.name {
+            "HASH" | "BACKSLASH" => {}
+            "L_SHIFT" => keys.push(KeyDef { w: 2.25, ..*k }),
+            "RETURN" => {
+                let quote = iso.iter().find(|q| q.name == "APOSTROPHE").unwrap_or(k);
+                let right = k.x + k.w;
+                let x = quote.x + quote.w;
+                keys.push(KeyDef { x, y: quote.y, w: right - x, ..*k });
+            }
+            "R_BRACKET" => {
+                keys.push(*k);
+                let enter = iso.iter().find(|e| e.name == "RETURN").unwrap_or(k);
+                keys.push(KeyDef {
+                    name: "ANSI_BACKSLASH",
+                    led: Some(0x2e),
+                    x: k.x + k.w,
+                    w: enter.x + enter.w - (k.x + k.w),
+                    ..*k
+                });
+            }
+            _ => keys.push(*k),
+        }
+    }
+    keys
+}

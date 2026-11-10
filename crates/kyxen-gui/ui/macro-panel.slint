@@ -6,7 +6,7 @@ import { Ui } from "state.slint";
 import { Button, ButtonKind, ChoiceTile, Chip, KeyChip, Label, SectionTitle, Slider, Toggle, Divider, Icon } from "widgets.slint";
 
 export global Kinds {
-    out property <[string]> names: ["Keine", "Text", "Kombination", "Befehl", "Halten", "Maus"];
+    out property <[string]> names: [@tr("None"), @tr("Text"), @tr("Combo"), @tr("Command"), @tr("Hold"), @tr("Mouse")];
     out property <[image]> icons: [
         @image-url("icons/none.svg"),
         @image-url("icons/text.svg"),
@@ -32,7 +32,7 @@ export component MacroPanel inherits VerticalLayout {
             color: Theme.accent;
         }
         Text {
-            text: "·  Makro";
+            text: @tr("·  Macro");
             font-family: Theme.font;
             font-size: Theme.font-xl;
             font-weight: 700;
@@ -41,7 +41,7 @@ export component MacroPanel inherits VerticalLayout {
     }
 
     SectionTitle {
-        text: "AKTION";
+        text: @tr("ACTION");
     }
 
     GridLayout {
@@ -68,14 +68,14 @@ export component MacroPanel inherits VerticalLayout {
 
     // ── details per action ──────────────────────────────────────────────
     if Ui.m-kind == 0: Label {
-        text: "Diese G-Taste macht nichts. Wähle oben eine Aktion.";
+        text: @tr("This G-key does nothing. Pick an action above.");
         wrap: word-wrap;
     }
 
     if Ui.m-kind == 1: VerticalLayout {
         spacing: 10px;
         SectionTitle {
-            text: "TEXT";
+            text: @tr("TEXT");
         }
         TextEdit {
             height: 120px;
@@ -84,7 +84,7 @@ export component MacroPanel inherits VerticalLayout {
             edited(t) => { Ui.set-text(t); }
         }
         Label {
-            text: "Wird mit deinem Tastaturlayout (" + Ui.layout-name + ") getippt – Umlaute, @ und € inklusive.";
+            text: @tr("Typed with your keyboard layout ({}), including umlauts, @ and €.", Ui.layout-name);
             wrap: word-wrap;
         }
     }
@@ -92,7 +92,7 @@ export component MacroPanel inherits VerticalLayout {
     if Ui.m-kind == 2 || Ui.m-kind == 4: VerticalLayout {
         spacing: 14px;
         SectionTitle {
-            text: Ui.m-kind == 2 ? "TASTENKOMBINATION" : "GEHALTENE TASTEN";
+            text: Ui.m-kind == 2 ? @tr("KEY COMBO") : @tr("HELD KEYS");
         }
         Rectangle {
             min-height: 84px;
@@ -102,7 +102,7 @@ export component MacroPanel inherits VerticalLayout {
             border-color: Ui.recording ? #ff5f5f80 : Theme.border;
             animate background, border-color { duration: 160ms; }
             if Ui.m-keys.length == 0: Text {
-                text: Ui.recording ? "Drück jetzt die Tasten …" : "Noch keine Tasten";
+                text: Ui.recording ? @tr("Press the keys now …") : @tr("No keys yet");
                 font-family: Theme.font;
                 font-size: Theme.font-md;
                 color: Ui.recording ? Theme.danger : Theme.text-faint;
@@ -133,7 +133,7 @@ export component MacroPanel inherits VerticalLayout {
                 kind: ButtonKind.record;
                 has-icon: true;
                 icon: @image-url("icons/record.svg");
-                text: Ui.recording ? "Aufnahme läuft – Esc bricht ab" : "Aufnehmen";
+                text: Ui.recording ? @tr("Recording – Esc cancels") : @tr("Record");
                 clicked => { Ui.start-record(); }
             }
             if Ui.m-keys.length > 0 && !Ui.recording: Button {
@@ -144,7 +144,7 @@ export component MacroPanel inherits VerticalLayout {
             }
         }
         if Ui.m-kind == 4: Label {
-            text: "Erster Druck auf die G-Taste hält die Tasten, zweiter Druck lässt sie los.";
+            text: @tr("The first press of the G-key holds the keys, the second press releases them.");
             wrap: word-wrap;
         }
     }
@@ -152,16 +152,16 @@ export component MacroPanel inherits VerticalLayout {
     if Ui.m-kind == 3: VerticalLayout {
         spacing: 10px;
         SectionTitle {
-            text: "BEFEHL";
+            text: @tr("COMMAND");
         }
         LineEdit {
             font-size: Theme.font-md;
-            placeholder-text: "z. B. notify-send Hallo";
+            placeholder-text: @tr("e.g. notify-send Hello");
             text <=> Ui.m-cmd;
             edited(t) => { Ui.set-cmd(t); }
         }
         Label {
-            text: "Läuft im Hintergrund über die Shell, wie in einem Terminal.";
+            text: @tr("Runs in the background through the shell, like in a terminal.");
             wrap: word-wrap;
         }
     }
@@ -169,11 +169,11 @@ export component MacroPanel inherits VerticalLayout {
     if Ui.m-kind == 5: VerticalLayout {
         spacing: 12px;
         SectionTitle {
-            text: "MAUSTASTE";
+            text: @tr("MOUSE BUTTON");
         }
         HorizontalLayout {
             spacing: 6px;
-            for b[i] in ["Links", "Rechts", "Mitte", "4", "5"]: Chip {
+            for b[i] in [@tr("Left"), @tr("Right"), @tr("Middle"), "4", "5"]: Chip {
                 horizontal-stretch: 1;
                 text: b;
                 selected: Ui.m-mouse-btn == i;
@@ -181,11 +181,11 @@ export component MacroPanel inherits VerticalLayout {
             }
         }
         SectionTitle {
-            text: "VERHALTEN";
+            text: @tr("BEHAVIOR");
         }
         HorizontalLayout {
             spacing: 6px;
-            for m[i] in ["Klick", "Doppelklick", "Halten"]: Chip {
+            for m[i] in [@tr("Click"), @tr("Double-click"), @tr("Hold")]: Chip {
                 horizontal-stretch: 1;
                 text: m;
                 selected: Ui.m-mouse-mode == i;
@@ -205,7 +205,7 @@ export component MacroPanel inherits VerticalLayout {
                 y: (parent.height - self.height) / 2;
             }
             Text {
-                text: "Wiederholen solange gedrückt";
+                text: @tr("Repeat while held");
                 font-family: Theme.font;
                 font-size: Theme.font-md;
                 color: Theme.text;
@@ -219,7 +219,7 @@ export component MacroPanel inherits VerticalLayout {
             }
         }
         if Ui.m-repeat: Slider {
-            label: "Intervall";
+            label: @tr("Interval");
             display: Ui.m-rate-text;
             value: Ui.m-rate;
             changed(v) => { Ui.set-rate(v); }
@@ -233,7 +233,7 @@ export component MacroPanel inherits VerticalLayout {
     Button {
         has-icon: true;
         icon: @image-url("icons/play.svg");
-        text: Ui.connected ? "Testen" : "Testen (Daemon läuft nicht)";
+        text: Ui.connected ? @tr("Test") : @tr("Test (daemon not running)");
         enabled: Ui.connected && Ui.m-kind != 0;
         clicked => { Ui.test-macro(); }
     }

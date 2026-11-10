@@ -32,6 +32,15 @@ fn decode(png_bytes: &[u8]) -> Option<Icon> {
     })
 }
 
+/// Menu texts in the app's language (set from the UI thread).
+#[derive(Debug, Default, Clone)]
+pub struct TrayTexts {
+    pub profile: String,
+    pub open: String,
+    pub quit: String,
+    pub no_keyboard: String,
+}
+
 pub struct KyxenTray {
     ui: slint::Weak<AppWindow>,
     icons: Vec<Icon>,
@@ -39,6 +48,7 @@ pub struct KyxenTray {
     pub profiles: Vec<(String, String)>,
     pub active: usize,
     pub keyboard: Option<String>,
+    pub texts: TrayTexts,
 }
 
 impl std::fmt::Debug for KyxenTray {
@@ -61,6 +71,7 @@ impl KyxenTray {
             profiles: Vec::new(),
             active: 0,
             keyboard: None,
+            texts: TrayTexts::default(),
         }
     }
 
@@ -87,10 +98,13 @@ impl ksni::Tray for KyxenTray {
             .profiles
             .get(self.active)
             .map_or("–", |(_, n)| n.as_str());
-        let device = self.keyboard.as_deref().unwrap_or("keine Tastatur");
+        let device = self
+            .keyboard
+            .as_deref()
+            .unwrap_or(&self.texts.no_keyboard);
         ToolTip {
             title: "Kyxen".into(),
-            description: format!("Profil: {profile}\n{device}"),
+            description: format!("{}: {profile}\n{device}", self.texts.profile),
             ..Default::default()
         }
     }
@@ -102,7 +116,7 @@ impl ksni::Tray for KyxenTray {
     fn menu(&self) -> Vec<MenuItem<Self>> {
         let mut items: Vec<MenuItem<Self>> = vec![
             StandardItem {
-                label: "Profil".into(),
+                label: self.texts.profile.clone(),
                 enabled: false,
                 ..Default::default()
             }
@@ -129,14 +143,14 @@ impl ksni::Tray for KyxenTray {
             .into(),
             MenuItem::Separator,
             StandardItem {
-                label: "Kyxen öffnen".into(),
+                label: self.texts.open.clone(),
                 icon_name: "configure".into(),
                 activate: Box::new(|tray: &mut Self| tray.show_window()),
                 ..Default::default()
             }
             .into(),
             StandardItem {
-                label: "Beenden".into(),
+                label: self.texts.quit.clone(),
                 icon_name: "application-exit".into(),
                 activate: Box::new(|_| {
                     let _ = slint::invoke_from_event_loop(|| {

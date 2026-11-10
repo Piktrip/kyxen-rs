@@ -20,20 +20,39 @@ use kyxen_core::config::{
 };
 use kyxen_core::effects;
 use kyxen_core::ipc::{self, Request, Status};
-use kyxen_core::keymap::Keymap;
+use kyxen_core::keymap::{Form, Keymap};
 use kyxen_core::layout::{self, TextLayout};
 use slint::{Color, ComponentHandle, Model, ModelRc, SharedString, Timer, TimerMode, VecModel};
 
 use crate::labels;
-use crate::{AppWindow, GKeyInfo, KeyCap, ProfileItem, Thumb, Ui};
+use crate::{AppWindow, GKeyInfo, KeyCap, ProfileItem, Thumb, Tr, Ui};
 
-const LAYOUTS: [(&str, Option<&str>); 5] = [
-    ("Automatisch", None),
-    ("Deutsch (Österreich)", Some("at")),
-    ("Deutsch", Some("de")),
-    ("Englisch (US)", Some("us")),
-    ("Englisch (UK)", Some("gb")),
-];
+/// Text layout choices; the names are `Tr.layouts` in the UI.
+const LAYOUTS: [Option<&str>; 5] = [None, Some("at"), Some("de"), Some("us"), Some("gb")];
+/// Key shape choices: automatic, ISO, ANSI.
+const FORMS: [Option<&str>; 3] = [None, Some("iso"), Some("ansi")];
+/// App language choices: system, German, English.
+const LANGUAGES: [Option<&str>; 3] = [None, Some("de"), Some("en")];
+
+/// Switch the UI language: `Some("de")`, `Some("en")` or the system language.
+/// Translations are compiled in; English is the source language.
+fn apply_language(lang: Option<&str>) {
+    let code = lang.map_or_else(system_language, str::to_owned);
+    let bundle = if code == "de" { "de" } else { "" };
+    if let Err(e) = slint::select_bundled_translation(bundle) {
+        tracing::warn!("language {code}: {e}");
+    }
+}
+
+/// Language part of the locale (`de_AT.UTF-8` → `de`), as gettext picks it.
+fn system_language() -> String {
+    ["LC_ALL", "LC_MESSAGES", "LANG"]
+        .iter()
+        .filter_map(|v| std::env::var(v).ok())
+        .find(|v| !v.is_empty())
+        .map(|v| v.split(['_', '.', '@']).next().unwrap_or_default().to_owned())
+        .unwrap_or_default()
+}
 const PALETTE: [&str; 8] = [
     "#3ddc84", "#00d1ff", "#0a84ff", "#bf5af2", "#ff2d95", "#ff9500", "#ffd60a", "#ff3b30",
 ];
@@ -158,9 +177,12 @@ fn with_effect(base: &LightingConfig, i: i32) -> LightingConfig {
 }
 
 fn demo_animation() -> AnimationConfig {
-    let map = Keymap::g815();
     let slide = |c: Rgb| Slide {
-        keys: map.lit().map(|(n, _)| (n.to_owned(), Colour(c))).collect(),
+        keys: Keymap::g815()
+            .lit()
+            .chain(Keymap::g815_ansi().lit())
+            .map(|(n, _)| (n.to_owned(), Colour(c)))
+            .collect(),
         hold: 0.6,
         transition: Transition::Hsv,
         transition_duration: 1.2,
@@ -233,12 +255,7 @@ impl App {
             global.keyboard_layout.as_deref(),
             global.keyboard_variant.as_deref(),
         );
-        let map = Keymap::g815();
-        let key_x = map
-            .keys
-            .iter()
-            .filter_map(|k| Some((k.led?, map.centre(k.name).0)))
-            .collect();
+        apply_language(global.language.as_deref());
         let app = Rc::new(RefCell::new(Self {
             ui: ui.as_weak(),
             store,
@@ -257,7 +274,7 @@ impl App {
                 };
                 6
             ])),
-            key_x,
+            key_x: BTreeMap::new(),
             effect_started: Instant::now(),
             tick: 0,
             save_timer: Timer::default(),
@@ -279,13 +296,7 @@ impl App {
                     .map(|p| rgb_to_slint(p.parse::<Colour>().map(|c| c.0).unwrap_or_default()))
                     .collect::<Vec<_>>(),
             ))));
-            g.set_layout_options(ModelRc::from(Rc::new(VecModel::from(
-                LAYOUTS
-                    .iter()
-                    .map(|(n, _)| SharedString::from(*n))
-                    .collect::<Vec<_>>(),
-            ))));
-            g.set_save_state("Automatisch gespeichert".into());
+            g.set_save_state(ui.global::<Tr>().get_saved());
             a.push_all();
         }
         app
@@ -332,10 +343,19 @@ impl App {
             .map(|p| (p.name.clone(), p.display_name().to_owned()))
             .collect();
         let (active, keyboard) = (self.cur, self.keyboard.clone());
+        let ui = self.ui();
+        let tr = ui.global::<Tr>();
+        let texts = crate::tray::TrayTexts {
+            profile: tr.get_tray_profile().into(),
+            open: tr.get_tray_open().into(),
+            quit: tr.get_tray_quit().into(),
+            no_keyboard: tr.get_tray_no_keyboard().into(),
+        };
         tray.update(move |t| {
             t.profiles = profiles;
             t.active = active;
             t.keyboard = keyboard;
+            t.texts = texts;
         });
     }
 
@@ -373,8 +393,21 @@ impl App {
 
     // ── keyboard model ──────────────────────────────────────────────────
 
+    /// ISO or ANSI key map, from the "key shape" setting or the layout.
+    fn keymap(&self) -> &'static Keymap {
+        Keymap::g815_for(Form::resolve(
+            self.global.keyboard_form.as_deref(),
+            &self.layout,
+        ))
+    }
+
     fn build_keys(&mut self) {
-        let map = Keymap::g815();
+        let map = self.keymap();
+        self.key_x = map
+            .keys
+            .iter()
+            .filter_map(|k| Some((k.led?, map.centre(k.name).0)))
+            .collect();
         let x0 = map.keys.iter().map(|k| k.x).fold(f32::INFINITY, f32::min);
         let y0 = map.keys.iter().map(|k| k.y).fold(f32::INFINITY, f32::min);
         let caps: Vec<KeyCap> = map
@@ -426,10 +459,8 @@ impl App {
         self.tick = self.tick.wrapping_add(1);
         let t = self.effect_started.elapsed().as_secs_f64();
         let cfg = self.profile().lighting.clone();
-        let frame: BTreeMap<u8, Rgb> = effects::frame(&cfg, Keymap::g815(), t)
-            .into_iter()
-            .collect();
-        let map = Keymap::g815();
+        let map = self.keymap();
+        let frame: BTreeMap<u8, Rgb> = effects::frame(&cfg, map, t).into_iter().collect();
         let (mut sr, mut sg, mut sb, mut n) = (0u32, 0u32, 0u32, 0u32);
         for i in 0..self.keys.row_count() {
             let Some(mut cap) = self.keys.row_data(i) else {
@@ -466,7 +497,7 @@ impl App {
         for i in 0..6 {
             let cfg = with_effect(base, i);
             let mut cols = vec![(0u32, 0u32, 0u32, 0u32); THUMB_COLUMNS];
-            for (led, Rgb(r, g, b)) in effects::frame(&cfg, Keymap::g815(), t) {
+            for (led, Rgb(r, g, b)) in effects::frame(&cfg, self.keymap(), t) {
                 let x = self.key_x.get(&led).copied().unwrap_or(0.5);
                 let c = ((x * THUMB_COLUMNS as f32) as usize).min(THUMB_COLUMNS - 1);
                 cols[c].0 += u32::from(r);
@@ -519,18 +550,20 @@ impl App {
     }
 
     fn summary(&self, a: &MacroAction) -> String {
+        let ui = self.ui();
+        let tr = ui.global::<Tr>();
         match a.action {
             ActionKind::Type => {
                 let t: String = a.text.chars().take(28).collect();
                 if t.is_empty() {
-                    "kein Text".into()
+                    tr.get_no_text().into()
                 } else {
                     format!("„{t}“")
                 }
             }
             ActionKind::Combo | ActionKind::HoldToggle => {
                 if a.keys.is_empty() {
-                    "keine Tasten".into()
+                    tr.get_no_keys().into()
                 } else {
                     a.keys
                         .iter()
@@ -541,23 +574,26 @@ impl App {
             }
             ActionKind::Command => {
                 if a.cmd.is_empty() {
-                    "kein Befehl".into()
+                    tr.get_no_command().into()
                 } else {
                     a.cmd.clone()
                 }
             }
             ActionKind::MouseButton => {
-                let b = ["Links", "Rechts", "Mitte", "Taste 4", "Taste 5"][MOUSE_BUTTONS
-                    .iter()
-                    .position(|m| *m == a.mouse_btn)
-                    .unwrap_or(0)];
-                let m = ["Klick", "Doppelklick", "Halten"][MOUSE_MODES
-                    .iter()
-                    .position(|m| *m == a.mouse_mode)
-                    .unwrap_or(0)];
+                let pick = |names: ModelRc<SharedString>, i: Option<usize>| {
+                    names.row_data(i.unwrap_or(0)).unwrap_or_default()
+                };
+                let b = pick(
+                    tr.get_mouse_buttons(),
+                    MOUSE_BUTTONS.iter().position(|m| *m == a.mouse_btn),
+                );
+                let m = pick(
+                    tr.get_mouse_modes(),
+                    MOUSE_MODES.iter().position(|m| *m == a.mouse_mode),
+                );
                 format!("{b} · {m}")
             }
-            ActionKind::None | ActionKind::Unknown => "nicht belegt".into(),
+            ActionKind::None | ActionKind::Unknown => tr.get_unassigned().into(),
         }
     }
 
@@ -690,11 +726,15 @@ impl App {
             g.set_p_name(p.display_name().into());
         }
         g.set_p_slot(self.global.slot_of(&p.name).map_or(0, i32::from));
-        let choice = LAYOUTS
-            .iter()
-            .position(|(_, code)| *code == self.global.keyboard_layout.as_deref())
-            .unwrap_or(0);
-        g.set_layout_choice(choice as i32);
+        let choice = |options: &[Option<&str>], value: Option<&String>| {
+            options
+                .iter()
+                .position(|o| *o == value.map(String::as_str))
+                .unwrap_or(0) as i32
+        };
+        g.set_layout_choice(choice(&LAYOUTS, self.global.keyboard_layout.as_ref()));
+        g.set_form_choice(choice(&FORMS, self.global.keyboard_form.as_ref()));
+        g.set_language_choice(choice(&LANGUAGES, self.global.language.as_ref()));
         g.set_tray_enabled(self.global.tray);
         g.set_tray_autostart(kyxen_core::desktop::tray_autostart());
     }
@@ -706,7 +746,8 @@ impl App {
         if a.read_only {
             return;
         }
-        a.ui().global::<Ui>().set_save_state("Speichert …".into());
+        let ui = a.ui();
+        ui.global::<Ui>().set_save_state(ui.global::<Tr>().get_saving());
         let weak = Rc::downgrade(this);
         a.save_timer.start(
             TimerMode::SingleShot,
@@ -732,14 +773,13 @@ impl App {
                 .inspect_err(|e| tracing::error!("{e}"))
                 .is_ok();
         }
-        self.ui().global::<Ui>().set_save_state(
-            if ok {
-                "Automatisch gespeichert"
-            } else {
-                "Speichern fehlgeschlagen"
-            }
-            .into(),
-        );
+        let ui = self.ui();
+        let tr = ui.global::<Tr>();
+        ui.global::<Ui>().set_save_state(if ok {
+            tr.get_saved()
+        } else {
+            tr.get_save_failed()
+        });
         send_daemon(Request::Reload);
     }
 
@@ -885,11 +925,11 @@ pub fn connect(ui: &AppWindow, app: &Shared) {
                 let mut a = rc.borrow_mut();
                 a.flush();
                 let mut n = a.profiles.len() + 1;
-                while a.profiles.iter().any(|p| p.name == format!("profil-{n}")) {
+                while a.profiles.iter().any(|p| p.name == format!("profile-{n}")) {
                     n += 1;
                 }
-                let mut p = Profile::new(&format!("profil-{n}"));
-                p.display_name = format!("Profil {n}");
+                let mut p = Profile::new(&format!("profile-{n}"));
+                p.display_name = a.ui().global::<Tr>().invoke_new_profile(n as i32).into();
                 p.tray_colour = PALETTE[n % PALETTE.len()].parse().unwrap_or_default();
                 p.lighting.base_colour = p.tray_colour;
                 a.profiles.push(p);
@@ -1084,7 +1124,7 @@ pub fn connect(ui: &AppWindow, app: &Shared) {
     g.on_test_macro(with!(app, |a| {
         a.flush();
         let n = a.gkey;
-        a.toast(&format!("G{n} ausgeführt"));
+        a.toast(&a.ui().global::<Tr>().invoke_triggered(i32::from(n)));
         // give the daemon a moment to reload the just-saved profile
         thread::spawn(move || {
             thread::sleep(Duration::from_millis(300));
@@ -1259,7 +1299,7 @@ pub fn connect(ui: &AppWindow, app: &Shared) {
                 tracing::warn!("{e}");
             }
             a.push_all();
-            a.toast(&format!("„{}“ gelöscht", removed.display_name()));
+            a.toast(&a.ui().global::<Tr>().invoke_deleted(removed.display_name().into()));
             send_daemon(Request::Reload);
         });
     }
@@ -1275,7 +1315,7 @@ pub fn connect(ui: &AppWindow, app: &Shared) {
                 a.global.tray = on;
                 if on {
                     if !a.spawn_tray() {
-                        a.toast("Kein Systemtray gefunden");
+                        a.toast(&a.ui().global::<Tr>().get_no_tray());
                     }
                 } else {
                     a.stop_tray();
@@ -1304,13 +1344,40 @@ pub fn connect(ui: &AppWindow, app: &Shared) {
             let Some(rc) = weak.upgrade() else { return };
             {
                 let mut a = rc.borrow_mut();
-                let code = LAYOUTS.get(i as usize).and_then(|(_, c)| *c);
+                let code = LAYOUTS.get(i as usize).copied().flatten();
                 a.global.keyboard_layout = code.map(str::to_owned);
                 a.global.keyboard_variant = None;
                 let (l, v) = layout::detect(a.global.keyboard_layout.as_deref(), None);
                 a.text_layout = TextLayout::new(&l, &v);
                 a.layout = l;
                 a.build_keys();
+                a.push_all();
+            }
+            App::mark_dirty(&rc, true);
+        });
+    }
+    {
+        let weak = Rc::downgrade(app);
+        g.on_set_form(move |i| {
+            let Some(rc) = weak.upgrade() else { return };
+            {
+                let mut a = rc.borrow_mut();
+                a.global.keyboard_form = FORMS.get(i as usize).copied().flatten().map(str::to_owned);
+                a.build_keys();
+                a.push_settings();
+            }
+            App::mark_dirty(&rc, true);
+        });
+    }
+    {
+        let weak = Rc::downgrade(app);
+        g.on_set_language(move |i| {
+            let Some(rc) = weak.upgrade() else { return };
+            {
+                let mut a = rc.borrow_mut();
+                a.global.language = LANGUAGES.get(i as usize).copied().flatten().map(str::to_owned);
+                apply_language(a.global.language.as_deref());
+                // texts built in Rust: summaries, tray menu
                 a.push_all();
             }
             App::mark_dirty(&rc, true);

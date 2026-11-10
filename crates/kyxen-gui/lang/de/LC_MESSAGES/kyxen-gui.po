@@ -1,0 +1,355 @@
+# German translation of the Kyxen app.
+# Source strings are the English texts in ui/*.slint (@tr).
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: de\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "ABOUT"
+msgstr "ÜBER"
+
+msgid "ACTION"
+msgstr "AKTION"
+
+msgid "All keys"
+msgstr "Alle Tasten"
+
+msgid "All keys cycle through the spectrum together."
+msgstr "Alle Tasten wechseln gemeinsam durch das Farbspektrum."
+
+msgid "Animation"
+msgstr "Animation"
+
+msgid "Animations with your own slides come with the slide editor. Until then, a sample animation plays."
+msgstr "Animationen mit eigenen Folien kommen mit dem Folien-Editor. Bis dahin läuft eine Beispiel-Animation."
+
+msgid "APP"
+msgstr "APP"
+
+msgid "Automatic"
+msgstr "Automatisch"
+
+msgid "Automatic = system language"
+msgstr "Automatisch = Systemsprache"
+
+msgid "Automatic = system setting"
+msgstr "Automatisch = Systemeinstellung"
+
+msgid "BEHAVIOR"
+msgstr "VERHALTEN"
+
+msgid "Breathing"
+msgstr "Atmen"
+
+msgid "Brightness"
+msgstr "Helligkeit"
+
+msgid "Brush"
+msgstr "Pinsel"
+
+msgid "BRUSH COLOR"
+msgstr "PINSELFARBE"
+
+msgid "Button 4"
+msgstr "Taste 4"
+
+msgid "Button 5"
+msgstr "Taste 5"
+
+msgid "Clear painting"
+msgstr "Bemalung löschen"
+
+msgid "Click"
+msgstr "Klick"
+
+msgid "Click or drag across keys to paint them with the brush color."
+msgstr "Klick oder zieh über Tasten, um sie mit der Pinselfarbe zu bemalen."
+
+msgid "COLOR"
+msgstr "FARBE"
+
+msgid "Color"
+msgstr "Farbe"
+
+msgid "Color 1"
+msgstr "Farbe 1"
+
+msgid "Color 2"
+msgstr "Farbe 2"
+
+msgid "Color cycle"
+msgstr "Farbwechsel"
+
+msgid "COLORS"
+msgstr "FARBEN"
+
+msgid "Combo"
+msgstr "Kombination"
+
+msgid "Command"
+msgstr "Befehl"
+
+msgid "COMMAND"
+msgstr "BEFEHL"
+
+msgid "Daemon not running"
+msgstr "Daemon läuft nicht"
+
+msgid "Daemon not running – start kyxend"
+msgstr "Daemon läuft nicht – starte kyxend"
+
+msgid "Daemon running, no keyboard"
+msgstr "Daemon läuft, keine Tastatur"
+
+msgid "Delete"
+msgstr "Löschen"
+
+msgid "Delete profile"
+msgstr "Profil löschen"
+
+msgid "Device"
+msgstr "Gerät"
+
+msgid "Direction"
+msgstr "Richtung"
+
+msgid "Double-click"
+msgstr "Doppelklick"
+
+msgid "e.g. notify-send Hello"
+msgstr "z. B. notify-send Hallo"
+
+msgid "Effect"
+msgstr "Effekt"
+
+msgid "English (UK)"
+msgstr "Englisch (UK)"
+
+msgid "English (US)"
+msgstr "Englisch (US)"
+
+msgid "Eraser"
+msgstr "Radierer"
+
+msgid "Eyedropper"
+msgstr "Pipette"
+
+msgid "Fill"
+msgstr "Füllen"
+
+msgid "German"
+msgstr "Deutsch"
+
+msgid "German (Austria)"
+msgstr "Deutsch (Österreich)"
+
+msgid "G{} triggered"
+msgstr "G{} ausgeführt"
+
+msgid "HELD KEYS"
+msgstr "GEHALTENE TASTEN"
+
+msgid "Hold"
+msgstr "Halten"
+
+msgid "Interval"
+msgstr "Intervall"
+
+msgid "ISO: tall Enter, <> key (DE, AT, UK) · ANSI: wide Enter (US)"
+msgstr "ISO: hohes Enter, <>-Taste (DE, AT, UK) · ANSI: breites Enter (US)"
+
+msgid "KEY COMBO"
+msgstr "TASTENKOMBINATION"
+
+msgid "Key on the keyboard that activates this profile"
+msgstr "Taste auf der Tastatur, die dieses Profil aktiviert"
+
+msgid "Key shape"
+msgstr "Tastenform"
+
+msgid "KEYBOARD"
+msgstr "TASTATUR"
+
+msgid "Keys"
+msgstr "Tasten"
+
+msgid "Kyxen stays in the system tray when you close the window"
+msgstr "Kyxen bleibt im Systemtray, wenn du das Fenster schließt"
+
+msgid "kyxen {} · GPL-3.0 · based on Kyxen by Wade Quinn"
+msgstr "kyxen {} · GPL-3.0 · basiert auf Kyxen von Wade Quinn"
+
+msgid "Language"
+msgstr "Sprache"
+
+msgid "Layout for text macros"
+msgstr "Layout für Text-Makros"
+
+msgid "Layout: {}"
+msgstr "Layout: {}"
+
+msgid "Left"
+msgstr "Links"
+
+msgid "Lighting"
+msgstr "Licht"
+
+msgid "Live preview · switch to “Static” to paint single keys"
+msgstr "Live-Vorschau · zum Bemalen einzelner Tasten auf „Statisch“ wechseln"
+
+msgid "M-key"
+msgstr "M-Taste"
+
+msgid "M1–M3 on the keyboard switch\nto the assigned profiles."
+msgstr "M1–M3 auf der Tastatur wechseln\ndie zugewiesenen Profile."
+
+msgid "Marker color in the list"
+msgstr "Erkennungsfarbe in der Liste"
+
+msgid "Middle"
+msgstr "Mitte"
+
+msgid "Mouse"
+msgstr "Maus"
+
+msgid "MOUSE BUTTON"
+msgstr "MAUSTASTE"
+
+msgid "Name"
+msgstr "Name"
+
+msgid "New profile"
+msgstr "Neues Profil"
+
+msgid "no command"
+msgstr "kein Befehl"
+
+msgid "no keyboard"
+msgstr "keine Tastatur"
+
+msgid "no keys"
+msgstr "keine Tasten"
+
+msgid "No keys yet"
+msgstr "Noch keine Tasten"
+
+msgid "No system tray found"
+msgstr "Kein Systemtray gefunden"
+
+msgid "no text"
+msgstr "kein Text"
+
+msgid "None"
+msgstr "Keine"
+
+msgid "not assigned"
+msgstr "nicht belegt"
+
+msgid "Open Kyxen"
+msgstr "Kyxen öffnen"
+
+msgid "Press the keys now …"
+msgstr "Drück jetzt die Tasten …"
+
+msgid "PROFILE"
+msgstr "PROFIL"
+
+msgid "Profile"
+msgstr "Profil"
+
+msgid "Profile {}"
+msgstr "Profil {}"
+
+msgid "PROFILES"
+msgstr "PROFILE"
+
+msgid "Quit"
+msgstr "Beenden"
+
+msgid "Rainbow"
+msgstr "Regenbogen"
+
+msgid "Record"
+msgstr "Aufnehmen"
+
+msgid "Recording – Esc cancels"
+msgstr "Aufnahme läuft – Esc bricht ab"
+
+msgid "Removes the profile file"
+msgstr "Entfernt die Profildatei"
+
+msgid "Repeat while held"
+msgstr "Wiederholen solange gedrückt"
+
+msgid "Right"
+msgstr "Rechts"
+
+msgid "Runs in the background through the shell, like in a terminal."
+msgstr "Läuft im Hintergrund über die Shell, wie in einem Terminal."
+
+msgid "Saved automatically"
+msgstr "Automatisch gespeichert"
+
+msgid "Saving failed"
+msgstr "Speichern fehlgeschlagen"
+
+msgid "Saving …"
+msgstr "Speichert …"
+
+msgid "Settings"
+msgstr "Einstellungen"
+
+msgid "Speed"
+msgstr "Geschwindigkeit"
+
+msgid "Start at login"
+msgstr "Beim Anmelden starten"
+
+msgid "Static"
+msgstr "Statisch"
+
+msgid "Test"
+msgstr "Testen"
+
+msgid "Test (daemon not running)"
+msgstr "Testen (Daemon läuft nicht)"
+
+msgid "Text"
+msgstr "Text"
+
+msgid "TEXT"
+msgstr "TEXT"
+
+msgid "The first press of the G-key holds the keys, the second press releases them."
+msgstr "Erster Druck auf die G-Taste hält die Tasten, zweiter Druck lässt sie los."
+
+msgid "The rainbow runs through every color."
+msgstr "Der Regenbogen läuft durch alle Farben."
+
+msgid "This G-key does nothing. Pick an action above."
+msgstr "Diese G-Taste macht nichts. Wähle oben eine Aktion."
+
+msgid "Tray icon"
+msgstr "Tray-Icon"
+
+msgid "Tray icon right after you log in"
+msgstr "Tray-Icon automatisch nach dem Login"
+
+msgid "Typed with your keyboard layout ({}), including umlauts, @ and €."
+msgstr "Wird mit deinem Tastaturlayout ({}) getippt – Umlaute, @ und € inklusive."
+
+msgid "Waiting for keyboard"
+msgstr "Warte auf Tastatur"
+
+msgid "Wave"
+msgstr "Welle"
+
+msgid "{} connected"
+msgstr "{} verbunden"
+
+msgid "·  Macro"
+msgstr "·  Makro"
+
+msgid "“{}” deleted"
+msgstr "„{}“ gelöscht"

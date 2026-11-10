@@ -32,7 +32,8 @@ const G815_LIGHTING_INIT: [[u8; 4]; 2] = [[0x11, 0xff, 0x09, 0x0f], [0x11, 0xff,
 
 #[derive(Debug)]
 pub enum Command {
-    Lighting(LightingConfig),
+    /// Lighting and the key map (ISO / ANSI) to draw it on.
+    Lighting(LightingConfig, &'static Keymap),
     /// Show M-key slot `n` (1-based) as active. The keyboard lights M-LEDs
     /// only for the active *onboard* profile (MKEYS `setLED` is ignored in
     /// onboard mode), so this activates that onboard profile and redraws.
@@ -119,7 +120,7 @@ struct Worker<T> {
     events: Sender<Event>,
     gkeys: KeyTracker,
     mkeys: KeyTracker,
-    lighting: Option<LightingConfig>,
+    lighting: Option<(LightingConfig, &'static Keymap)>,
     onboard_slot: Option<u8>,
     started: Instant,
     last_frame: Option<Frame>,
@@ -168,8 +169,8 @@ impl<T: Transport> Worker<T> {
 
     fn handle(&mut self, cmd: Command) {
         match cmd {
-            Command::Lighting(cfg) => {
-                self.lighting = Some(cfg);
+            Command::Lighting(cfg, map) => {
+                self.lighting = Some((cfg, map));
                 self.started = Instant::now();
                 self.last_frame = None;
                 self.next_frame = Instant::now();
@@ -218,13 +219,13 @@ impl<T: Transport> Worker<T> {
     }
 
     fn render(&mut self) -> Result<()> {
-        let (Some(cfg), Some(idx)) = (&self.lighting, self.f.per_key) else {
+        let (Some((cfg, map)), Some(idx)) = (&self.lighting, self.f.per_key) else {
             self.next_frame = Instant::now() + IDLE;
             return Ok(());
         };
         let animated = effects::is_animated(cfg);
         if animated || self.last_frame.is_none() {
-            let frame = effects::frame(cfg, Keymap::g815(), self.started.elapsed().as_secs_f64());
+            let frame = effects::frame(cfg, map, self.started.elapsed().as_secs_f64());
             let changed = effects::diff(self.last_frame.as_ref(), &frame);
             for report in frame_reports(idx, &changed) {
                 self.dev.send_raw(&report)?;
@@ -312,7 +313,7 @@ mod tests {
     #[test]
     fn static_lighting_is_sent_once() {
         let (mut w, _) = worker(MockKeyboard::g915());
-        w.handle(Command::Lighting(LightingConfig::default()));
+        w.handle(Command::Lighting(LightingConfig::default(), Keymap::g815()));
         w.render().unwrap();
         let first = w.dev.transport_mut().sent.len();
         assert!(
@@ -346,7 +347,7 @@ mod tests {
     #[test]
     fn mkey_led_activates_onboard_profile_and_redraws() {
         let (mut w, _) = worker(MockKeyboard::g915());
-        w.handle(Command::Lighting(LightingConfig::default()));
+        w.handle(Command::Lighting(LightingConfig::default(), Keymap::g815()));
         w.render().unwrap();
         let before = w.dev.transport_mut().sent.len();
         w.set_mkey_led(Some(2));

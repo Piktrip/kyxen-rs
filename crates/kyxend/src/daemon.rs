@@ -7,6 +7,7 @@ use std::time::{Duration, SystemTime};
 use anyhow::Result;
 use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
 use kyxen_core::config::{GlobalConfig, Profile, Store};
+use kyxen_core::keymap::{Form, Keymap};
 use kyxen_core::layout::{self, TextLayout};
 use serde_json::{Value, json};
 use tracing::{error, info, warn};
@@ -47,6 +48,8 @@ pub struct Daemon {
     events_tx: Sender<Event>,
     conn: Option<Connection>,
     config_stamp: (Option<SystemTime>, Option<SystemTime>),
+    /// ISO / ANSI key map, from the config.
+    keymap: &'static Keymap,
 }
 
 impl Daemon {
@@ -60,6 +63,7 @@ impl Daemon {
             events_tx,
             conn: None,
             config_stamp: (None, None),
+            keymap: Keymap::g815(),
         };
         d.reload();
         d
@@ -72,6 +76,12 @@ impl Daemon {
             global.keyboard_variant.as_deref(),
         );
         TextLayout::new(&l, &v)
+    }
+
+    /// Key map (ISO / ANSI) for the current config.
+    fn keymap(global: &GlobalConfig) -> &'static Keymap {
+        let (l, _) = layout::detect(global.keyboard_layout.as_deref(), None);
+        Keymap::g815_for(Form::resolve(global.keyboard_form.as_deref(), &l))
     }
 
     fn stamp(&self) -> (Option<SystemTime>, Option<SystemTime>) {
@@ -116,6 +126,7 @@ impl Daemon {
                 .actions
                 .send(Job::SetLayout(Self::text_layout(&self.global)));
         }
+        self.keymap = Self::keymap(&self.global);
         self.config_stamp = self.stamp();
         self.apply_active();
         info!(
@@ -135,7 +146,10 @@ impl Daemon {
         if let Some(p) = self.active_profile() {
             let _ = conn
                 .commands
-                .send(keyboard::Command::Lighting(p.lighting.clone()));
+                .send(keyboard::Command::Lighting(
+                    p.lighting.clone(),
+                    self.keymap,
+                ));
         }
         let _ = conn.commands.send(keyboard::Command::MKeyLed(
             self.global.slot_of(&self.active),
