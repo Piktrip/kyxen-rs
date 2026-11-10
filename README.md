@@ -211,6 +211,6 @@ knowledge comes from observing the devices and from the original Kyxen.
 
 Based on [Kyxen](https://github.com/quinn-stack/kyxen) by Wade Quinn and
 contributors; the protocol knowledge, key maps and config format come from
-there. Rewritten in Rust with AI assistance (Claude, by Anthropic).
+there. Rewritten in Rust.
 
 GNU General Public License v3.0 or later — see [LICENSE](LICENSE).
