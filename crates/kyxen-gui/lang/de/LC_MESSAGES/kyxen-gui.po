@@ -389,3 +389,6 @@ msgstr "Kein Zugriff auf {} (Empfänger oder unbekanntes Modell). Für alle Deta
 
 msgid "Could not save the report"
 msgstr "Bericht konnte nicht gespeichert werden"
+
+msgid "“{}”"
+msgstr "„{}“"

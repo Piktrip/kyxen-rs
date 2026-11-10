@@ -655,7 +655,7 @@ impl App {
                 if t.is_empty() {
                     tr.get_no_text().into()
                 } else {
-                    format!("„{t}“")
+                    tr.invoke_quoted(t.into()).into()
                 }
             }
             ActionKind::Combo | ActionKind::HoldToggle => {

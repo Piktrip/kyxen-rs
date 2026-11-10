@@ -21,9 +21,9 @@ use slint::{ComponentHandle, Timer, TimerMode};
 use tracing_subscriber::EnvFilter;
 pub use ui::*;
 
-/// `--screenshot <file.png> [--tab N] [--gkey N] [--effect N] [--lang N] [--form N]`:
+/// `--screenshot <file.png> [--tab N] [--gkey N] [--effect N] [--lang N] [--form N] [--layout N]`:
 /// render the window after it settled, save it and exit (for visual checks).
-/// `--lang` / `--form` pick the settings choices (0 = automatic).
+/// `--lang` / `--form` / `--layout` pick the settings choices (0 = automatic).
 struct Shot {
     path: String,
     tab: i32,
@@ -31,6 +31,7 @@ struct Shot {
     effect: Option<i32>,
     lang: Option<i32>,
     form: Option<i32>,
+    layout: Option<i32>,
 }
 
 fn parse_shot() -> Option<Shot> {
@@ -47,6 +48,7 @@ fn parse_shot() -> Option<Shot> {
         gkey: value("--gkey").and_then(|v| v.parse().ok()).unwrap_or(1),
         effect: value("--effect").and_then(|v| v.parse().ok()),
         lang: value("--lang").and_then(|v| v.parse().ok()),
+        layout: value("--layout").and_then(|v| v.parse().ok()),
         form: value("--form").and_then(|v| v.parse().ok()),
     })
 }
@@ -178,6 +180,9 @@ fn main() -> Result<(), slint::PlatformError> {
         }
         if let Some(f) = shot.form {
             g.invoke_set_form(f);
+        }
+        if let Some(l) = shot.layout {
+            g.invoke_set_layout(l);
         }
         let weak = window.as_weak();
         Timer::single_shot(Duration::from_millis(1500), move || {

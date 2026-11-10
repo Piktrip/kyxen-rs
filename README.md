@@ -94,6 +94,7 @@ the `.po` file.
 
 ![Keys](docs/screenshots/keys.png)
 ![Lighting](docs/screenshots/lighting.png)
+![Settings](docs/screenshots/settings.png)
 
 ## Permissions
 

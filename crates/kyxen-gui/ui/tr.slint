@@ -31,6 +31,9 @@ export global Tr {
     public pure function triggered(n: int) -> string {
         return @tr("G{} triggered", n);
     }
+    public pure function quoted(text: string) -> string {
+        return @tr("“{}”", text);
+    }
     public pure function deleted(name: string) -> string {
         return @tr("“{}” deleted", name);
     }
