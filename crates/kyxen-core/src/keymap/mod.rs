@@ -139,7 +139,10 @@ mod tests {
         let right = |k: &KeyDef| k.x + k.w;
         let rs = right(ansi.get("R_SHIFT").unwrap());
         assert!((right(bs) - rs).abs() < 1e-3 && (right(enter) - rs).abs() < 1e-3);
-        assert_eq!(right(ansi.get("L_SHIFT").unwrap()), ansi.get("Z").unwrap().x);
+        assert_eq!(
+            right(ansi.get("L_SHIFT").unwrap()),
+            ansi.get("Z").unwrap().x
+        );
         assert_eq!(Form::resolve(None, "us"), Form::Ansi);
         assert_eq!(Form::resolve(None, "de"), Form::Iso);
         assert_eq!(Form::resolve(Some("iso"), "us"), Form::Iso);

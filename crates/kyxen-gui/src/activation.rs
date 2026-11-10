@@ -25,7 +25,9 @@ static PENDING: Mutex<Option<String>> = Mutex::new(None);
 /// Park a token (from another thread) for the next [`crate::present`].
 pub fn set(token: String) {
     if !token.is_empty() {
-        *PENDING.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(token);
+        *PENDING
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(token);
     }
 }
 

@@ -146,7 +146,12 @@ pub fn ansi(iso: &[KeyDef]) -> Vec<KeyDef> {
                 let quote = iso.iter().find(|q| q.name == "APOSTROPHE").unwrap_or(k);
                 let right = k.x + k.w;
                 let x = quote.x + quote.w;
-                keys.push(KeyDef { x, y: quote.y, w: right - x, ..*k });
+                keys.push(KeyDef {
+                    x,
+                    y: quote.y,
+                    w: right - x,
+                    ..*k
+                });
             }
             "R_BRACKET" => {
                 keys.push(*k);

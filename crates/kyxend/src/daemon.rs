@@ -146,10 +146,7 @@ impl Daemon {
         if let Some(p) = self.active_profile() {
             let _ = conn
                 .commands
-                .send(keyboard::Command::Lighting(
-                    p.lighting.clone(),
-                    self.keymap,
-                ));
+                .send(keyboard::Command::Lighting(p.lighting.clone(), self.keymap));
         }
         let _ = conn.commands.send(keyboard::Command::MKeyLed(
             self.global.slot_of(&self.active),

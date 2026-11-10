@@ -50,7 +50,12 @@ fn system_language() -> String {
         .iter()
         .filter_map(|v| std::env::var(v).ok())
         .find(|v| !v.is_empty())
-        .map(|v| v.split(['_', '.', '@']).next().unwrap_or_default().to_owned())
+        .map(|v| {
+            v.split(['_', '.', '@'])
+                .next()
+                .unwrap_or_default()
+                .to_owned()
+        })
         .unwrap_or_default()
 }
 const PALETTE: [&str; 8] = [
@@ -223,7 +228,9 @@ fn send_daemon(req: Request) {
 /// Drop requests a later one in the same burst makes moot: only the last
 /// profile switch and the last reload count. Order is kept otherwise.
 fn coalesce(batch: Vec<Request>) -> Vec<Request> {
-    let last_switch = batch.iter().rposition(|r| matches!(r, Request::Switch { .. }));
+    let last_switch = batch
+        .iter()
+        .rposition(|r| matches!(r, Request::Switch { .. }));
     let last_reload = batch.iter().rposition(|r| matches!(r, Request::Reload));
     batch
         .into_iter()
@@ -790,7 +797,8 @@ impl App {
             return;
         }
         let ui = a.ui();
-        ui.global::<Ui>().set_save_state(ui.global::<Tr>().get_saving());
+        ui.global::<Ui>()
+            .set_save_state(ui.global::<Tr>().get_saving());
         let weak = Rc::downgrade(this);
         a.save_timer.start(
             TimerMode::SingleShot,
@@ -883,7 +891,10 @@ impl App {
             .position(|p| p.name == s.active_profile)
             && i != self.cur
         {
-            tracing::debug!(profile = s.active_profile, "following a profile switch on the keyboard");
+            tracing::debug!(
+                profile = s.active_profile,
+                "following a profile switch on the keyboard"
+            );
             self.cur = i;
             self.global.active_profile.clone_from(&s.active_profile);
             self.stop = 0;
@@ -1358,7 +1369,11 @@ pub fn connect(ui: &AppWindow, app: &Shared) {
                 tracing::warn!("{e}");
             }
             a.push_all();
-            a.toast(&a.ui().global::<Tr>().invoke_deleted(removed.display_name().into()));
+            a.toast(
+                &a.ui()
+                    .global::<Tr>()
+                    .invoke_deleted(removed.display_name().into()),
+            );
             send_daemon(Request::Reload);
         });
     }
@@ -1421,7 +1436,8 @@ pub fn connect(ui: &AppWindow, app: &Shared) {
             let Some(rc) = weak.upgrade() else { return };
             {
                 let mut a = rc.borrow_mut();
-                a.global.keyboard_form = FORMS.get(i as usize).copied().flatten().map(str::to_owned);
+                a.global.keyboard_form =
+                    FORMS.get(i as usize).copied().flatten().map(str::to_owned);
                 a.build_keys();
                 a.push_settings();
             }
@@ -1434,7 +1450,11 @@ pub fn connect(ui: &AppWindow, app: &Shared) {
             let Some(rc) = weak.upgrade() else { return };
             {
                 let mut a = rc.borrow_mut();
-                a.global.language = LANGUAGES.get(i as usize).copied().flatten().map(str::to_owned);
+                a.global.language = LANGUAGES
+                    .get(i as usize)
+                    .copied()
+                    .flatten()
+                    .map(str::to_owned);
                 apply_language(a.global.language.as_deref());
                 // texts built in Rust: summaries, tray menu
                 a.push_all();

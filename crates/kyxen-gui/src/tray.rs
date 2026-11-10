@@ -107,10 +107,7 @@ impl ksni::Tray for KyxenTray {
             .profiles
             .get(self.active)
             .map_or("–", |(_, n)| n.as_str());
-        let device = self
-            .keyboard
-            .as_deref()
-            .unwrap_or(&self.texts.no_keyboard);
+        let device = self.keyboard.as_deref().unwrap_or(&self.texts.no_keyboard);
         ToolTip {
             title: "Kyxen".into(),
             description: format!("{}: {profile}\n{device}", self.texts.profile),
