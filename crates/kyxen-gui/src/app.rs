@@ -7,7 +7,7 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::rc::Rc;
-use std::sync::mpsc;
+use std::sync::{OnceLock, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -197,11 +197,44 @@ fn demo_animation() -> AnimationConfig {
     }
 }
 
-/// Run something that talks to the daemon off the UI thread.
+/// Send a request to the daemon off the UI thread.
+///
+/// One worker sends them in order: with a thread per request, quick clicks
+/// A → B → A could reach the daemon as A, A, B and leave it on another
+/// profile than the UI shows.
 fn send_daemon(req: Request) {
-    thread::spawn(move || {
-        ipc::command(&req);
+    static QUEUE: OnceLock<mpsc::Sender<Request>> = OnceLock::new();
+    let tx = QUEUE.get_or_init(|| {
+        let (tx, rx) = mpsc::channel::<Request>();
+        thread::spawn(move || {
+            while let Ok(first) = rx.recv() {
+                let mut batch = vec![first];
+                batch.extend(rx.try_iter());
+                for req in coalesce(batch) {
+                    ipc::command(&req);
+                }
+            }
+        });
+        tx
     });
+    let _ = tx.send(req);
+}
+
+/// Drop requests a later one in the same burst makes moot: only the last
+/// profile switch and the last reload count. Order is kept otherwise.
+fn coalesce(batch: Vec<Request>) -> Vec<Request> {
+    let last_switch = batch.iter().rposition(|r| matches!(r, Request::Switch { .. }));
+    let last_reload = batch.iter().rposition(|r| matches!(r, Request::Reload));
+    batch
+        .into_iter()
+        .enumerate()
+        .filter(|(i, r)| match r {
+            Request::Switch { .. } => Some(*i) == last_switch,
+            Request::Reload => Some(*i) == last_reload,
+            _ => true,
+        })
+        .map(|(_, r)| r)
+        .collect()
 }
 
 #[derive(Default)]
@@ -232,6 +265,11 @@ pub struct App {
     pub read_only: bool,
     tray: Option<ksni::blocking::Handle<crate::tray::KyxenTray>>,
     keyboard: Option<String>,
+    /// The daemon's active profile in the last status; the UI follows
+    /// changes of it (M1–M3), not mere differences from its own selection.
+    daemon_profile: Option<String>,
+    /// Last profile change made in the UI (switch, new, delete).
+    local_change: Option<Instant>,
 }
 
 pub type Shared = Rc<RefCell<App>>;
@@ -282,6 +320,8 @@ impl App {
             read_only: false,
             tray: None,
             keyboard: None,
+            daemon_profile: None,
+            local_change: None,
         }));
         {
             let mut a = app.borrow_mut();
@@ -822,15 +862,28 @@ impl App {
                 .unwrap_or_default()
                 .into(),
         );
-        // follow profile switches made with M1–M3 on the keyboard
-        if let Some(s) = status
-            && let Some(i) = self
-                .profiles
-                .iter()
-                .position(|p| p.name == s.active_profile)
+        // Follow profile switches made with M1–M3 on the keyboard. Only a
+        // change on the daemon's side counts: a status that was requested
+        // before a click in the UI arrives with the old profile, and comparing
+        // it with our selection would switch the UI back.
+        let Some(s) = status else { return };
+        // Statuses requested around our own changes may still show the old
+        // profile; look again once the daemon has caught up.
+        let settling = self.save_timer.running()
+            || self
+                .local_change
+                .is_some_and(|t| t.elapsed() < Duration::from_secs(2));
+        if settling || self.daemon_profile.as_deref() == Some(s.active_profile.as_str()) {
+            return;
+        }
+        self.daemon_profile = Some(s.active_profile.clone());
+        if let Some(i) = self
+            .profiles
+            .iter()
+            .position(|p| p.name == s.active_profile)
             && i != self.cur
-            && !self.save_timer.running()
         {
+            tracing::debug!(profile = s.active_profile, "following a profile switch on the keyboard");
             self.cur = i;
             self.global.active_profile.clone_from(&s.active_profile);
             self.stop = 0;
@@ -911,6 +964,7 @@ pub fn connect(ui: &AppWindow, app: &Shared) {
     // ── profiles ────────────────────────────────────────────────────────
     g.on_select_profile(with!(app, |a, i: i32| {
         a.flush();
+        a.local_change = Some(Instant::now());
         a.cur = (i as usize).min(a.profiles.len() - 1);
         let name = a.profile().name.clone();
         a.global.active_profile.clone_from(&name);
@@ -927,6 +981,7 @@ pub fn connect(ui: &AppWindow, app: &Shared) {
             {
                 let mut a = rc.borrow_mut();
                 a.flush();
+                a.local_change = Some(Instant::now());
                 let mut n = a.profiles.len() + 1;
                 while a.profiles.iter().any(|p| p.name == format!("profile-{n}")) {
                     n += 1;
@@ -1285,6 +1340,7 @@ pub fn connect(ui: &AppWindow, app: &Shared) {
                 return;
             }
             a.save_timer.stop();
+            a.local_change = Some(Instant::now());
             let cur = a.cur;
             let removed = a.profiles.remove(cur);
             let path = a
@@ -1413,6 +1469,29 @@ pub fn start_status_polling(app: &Shared) -> Timer {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bursts_keep_the_last_switch_in_order() {
+        let sw = |p: &str| Request::Switch { profile: p.into() };
+        let out = coalesce(vec![
+            sw("a"),
+            Request::Reload,
+            sw("b"),
+            Request::Run { gkey: 1 },
+            Request::Reload,
+            sw("a"),
+        ]);
+        let names: Vec<String> = out
+            .iter()
+            .map(|r| match r {
+                Request::Switch { profile } => format!("switch {profile}"),
+                Request::Reload => "reload".into(),
+                Request::Run { gkey } => format!("run {gkey}"),
+                Request::Status => "status".into(),
+            })
+            .collect();
+        assert_eq!(names, ["run 1", "reload", "switch a"]);
+    }
 
     #[test]
     fn slider_mappings_round_trip() {
