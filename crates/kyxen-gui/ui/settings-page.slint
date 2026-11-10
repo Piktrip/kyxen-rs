@@ -1,7 +1,7 @@
-import { LineEdit, ComboBox } from "std-widgets.slint";
+import { LineEdit, ComboBox, ScrollView } from "std-widgets.slint";
 import { Theme } from "theme.slint";
 import { Ui } from "state.slint";
-import { Button, ButtonKind, Card, Chip, Label, SectionTitle } from "widgets.slint";
+import { Button, ButtonKind, Card, Chip, Label, SectionTitle, Toggle } from "widgets.slint";
 
 component Row inherits HorizontalLayout {
     in property <string> title;
@@ -29,8 +29,10 @@ component Row inherits HorizontalLayout {
     @children
 }
 
-export component SettingsPage inherits HorizontalLayout {
+export component SettingsPage inherits ScrollView {
+    HorizontalLayout {
     alignment: center;
+    padding-bottom: 8px;
     VerticalLayout {
         max-width: 760px;
         horizontal-stretch: 1;
@@ -137,6 +139,40 @@ export component SettingsPage inherits HorizontalLayout {
         Card {
             VerticalLayout {
                 padding: 24px;
+                spacing: 20px;
+                SectionTitle {
+                    text: "APP";
+                }
+                Row {
+                    title: "Tray-Icon";
+                    hint: "Kyxen bleibt im Systemtray, wenn du das Fenster schließt";
+                    HorizontalLayout {
+                        alignment: start;
+                        Toggle {
+                            y: (parent.height - self.height) / 2;
+                            checked: Ui.tray-enabled;
+                            toggled(on) => { Ui.set-tray(on); }
+                        }
+                    }
+                }
+                if Ui.tray-enabled: Row {
+                    title: "Beim Anmelden starten";
+                    hint: "Tray-Icon automatisch nach dem Login";
+                    HorizontalLayout {
+                        alignment: start;
+                        Toggle {
+                            y: (parent.height - self.height) / 2;
+                            checked: Ui.tray-autostart;
+                            toggled(on) => { Ui.set-autostart(on); }
+                        }
+                    }
+                }
+            }
+        }
+
+        Card {
+            VerticalLayout {
+                padding: 24px;
                 spacing: 8px;
                 SectionTitle {
                     text: "ÜBER";
@@ -148,4 +184,5 @@ export component SettingsPage inherits HorizontalLayout {
             }
         }
     }
+}
 }

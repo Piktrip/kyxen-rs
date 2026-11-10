@@ -5,6 +5,7 @@
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::path::Path;
 use std::rc::Rc;
 use std::sync::mpsc;
 use std::thread;
@@ -290,9 +291,37 @@ impl App {
         app
     }
 
-    pub fn set_tray(&mut self, tray: Option<ksni::blocking::Handle<crate::tray::KyxenTray>>) {
-        self.tray = tray;
-        self.sync_tray();
+    /// Show the tray icon; `false` if there is no tray host.
+    pub fn spawn_tray(&mut self) -> bool {
+        use ksni::blocking::TrayMethods;
+        if self.tray.is_some() {
+            return true;
+        }
+        match crate::tray::KyxenTray::new(self.ui.clone()).spawn() {
+            Ok(handle) => {
+                self.tray = Some(handle);
+                self.sync_tray();
+                true
+            }
+            Err(e) => {
+                tracing::warn!("no tray icon: {e}");
+                false
+            }
+        }
+    }
+
+    fn stop_tray(&mut self) {
+        if let Some(tray) = self.tray.take() {
+            let _ = tray.shutdown();
+        }
+    }
+
+    pub fn has_tray(&self) -> bool {
+        self.tray.is_some()
+    }
+
+    pub fn tray_wanted(&self) -> bool {
+        self.global.tray
     }
 
     fn sync_tray(&self) {
@@ -666,6 +695,8 @@ impl App {
             .position(|(_, code)| *code == self.global.keyboard_layout.as_deref())
             .unwrap_or(0);
         g.set_layout_choice(choice as i32);
+        g.set_tray_enabled(self.global.tray);
+        g.set_tray_autostart(kyxen_core::desktop::tray_autostart());
     }
 
     // ── saving ──────────────────────────────────────────────────────────
@@ -1232,6 +1263,41 @@ pub fn connect(ui: &AppWindow, app: &Shared) {
             send_daemon(Request::Reload);
         });
     }
+    {
+        let weak = Rc::downgrade(app);
+        g.on_set_tray(move |on| {
+            let Some(rc) = weak.upgrade() else { return };
+            {
+                let mut a = rc.borrow_mut();
+                if a.read_only {
+                    return;
+                }
+                a.global.tray = on;
+                if on {
+                    if !a.spawn_tray() {
+                        a.toast("Kein Systemtray gefunden");
+                    }
+                } else {
+                    a.stop_tray();
+                    if let Err(e) = kyxen_core::desktop::set_tray_autostart(Path::new(""), false) {
+                        tracing::warn!("could not remove autostart entry: {e}");
+                    }
+                }
+                a.push_settings();
+            }
+            App::mark_dirty(&rc, true);
+        });
+    }
+    g.on_set_autostart(with!(app, |a, on: bool| {
+        if a.read_only {
+            return;
+        }
+        let exe = std::env::current_exe().unwrap_or_default();
+        if let Err(e) = kyxen_core::desktop::set_tray_autostart(&exe, on) {
+            a.toast(&format!("Autostart: {e}"));
+        }
+        a.push_settings();
+    }));
     {
         let weak = Rc::downgrade(app);
         g.on_set_layout(move |i| {

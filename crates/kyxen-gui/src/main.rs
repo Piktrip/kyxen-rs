@@ -94,18 +94,13 @@ fn main() -> Result<(), slint::PlatformError> {
         });
     }
 
-    // Tray icon; without a tray host the window just closes as usual.
-    let tray = if shot.is_none() {
-        use ksni::blocking::TrayMethods;
-        tray::KyxenTray::new(window.as_weak())
-            .spawn()
-            .inspect_err(|e| tracing::warn!("no tray icon: {e}"))
-            .ok()
-    } else {
-        None
-    };
-    let has_tray = tray.is_some();
-    app.borrow_mut().set_tray(tray);
+    // Tray icon (setting "Tray-Icon"); without a tray host the window closes as usual.
+    let tray_wanted = shot.is_none() && app.borrow().tray_wanted();
+    let has_tray = tray_wanted && app.borrow_mut().spawn_tray();
+    if start_hidden && !has_tray {
+        // started for the tray at login, but the tray is switched off
+        return Ok(());
+    }
     if shot.is_none() {
         instance::listen(window.as_weak());
     }
@@ -130,17 +125,19 @@ fn main() -> Result<(), slint::PlatformError> {
         });
     }
 
-    if has_tray {
-        window
-            .window()
-            .on_close_requested(|| slint::CloseRequestResponse::HideWindow);
+    // With a tray, closing only hides the window; the tray can be switched
+    // on and off at runtime, so decide when the window is closed.
+    {
+        let weak = std::rc::Rc::downgrade(&app);
+        window.window().on_close_requested(move || {
+            if !weak.upgrade().is_some_and(|a| a.borrow().has_tray()) {
+                let _ = slint::quit_event_loop();
+            }
+            slint::CloseRequestResponse::HideWindow
+        });
     }
     if !(has_tray && start_hidden) {
         window.show()?;
     }
-    if has_tray {
-        slint::run_event_loop_until_quit()
-    } else {
-        slint::run_event_loop()
-    }
+    slint::run_event_loop_until_quit()
 }

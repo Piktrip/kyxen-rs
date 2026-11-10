@@ -3,6 +3,7 @@
 
 pub mod colour;
 pub mod config;
+pub mod desktop;
 pub mod effects;
 pub mod ipc;
 pub mod keymap;

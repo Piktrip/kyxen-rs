@@ -55,6 +55,18 @@ pub struct GlobalConfig {
     pub keyboard_layout: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub keyboard_variant: Option<String>,
+    /// Show the app's tray icon (and keep running when the window closes).
+    #[serde(default = "yes", skip_serializing_if = "is_yes")]
+    pub tray: bool,
+}
+
+fn yes() -> bool {
+    true
+}
+
+#[allow(clippy::trivially_copy_pass_by_ref)] // serde passes a reference
+fn is_yes(b: &bool) -> bool {
+    *b
 }
 
 impl Default for GlobalConfig {
@@ -64,6 +76,7 @@ impl Default for GlobalConfig {
             profile_slots: BTreeMap::new(),
             keyboard_layout: None,
             keyboard_variant: None,
+            tray: true,
         }
     }
 }
@@ -619,6 +632,15 @@ direction = "top_bottom"
         assert_eq!(g.slot(2), None);
         assert_eq!(g.slot_of("x"), Some(3));
         assert_eq!(g.keyboard_layout.as_deref(), Some("at"));
+        assert!(g.tray, "tray defaults to on");
+        let off = GlobalConfig { tray: false, ..g };
+        let text = toml::to_string(&off).unwrap();
+        assert!(text.contains("tray = false"));
+        assert!(
+            !toml::to_string(&GlobalConfig::default())
+                .unwrap()
+                .contains("tray")
+        );
     }
 
     #[test]

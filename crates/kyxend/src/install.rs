@@ -14,6 +14,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::{Context, Result, bail};
+use kyxen_core::config::Store;
+use kyxen_core::desktop;
 
 const UNIT: &str = "kyxend.service";
 const ICON: &[u8] = include_bytes!("../../kyxen-gui/assets/icon-256.png");
@@ -41,13 +43,12 @@ struct Paths {
 
 fn paths() -> Result<Paths> {
     let config = xdg("XDG_CONFIG_HOME", ".config")?;
-    let data = xdg("XDG_DATA_HOME", ".local/share")?;
     Ok(Paths {
         bin_dir: home()?.join(".local/bin"),
         unit: config.join("systemd/user").join(UNIT),
-        desktop: data.join("applications/kyxen.desktop"),
-        icon: data.join("icons/hicolor/256x256/apps/kyxen.png"),
-        autostart: config.join("autostart/kyxen-tray.desktop"),
+        desktop: desktop::launcher_path(),
+        icon: desktop::icon_path(),
+        autostart: desktop::autostart_path(),
     })
 }
 
@@ -89,32 +90,6 @@ pub fn unit_file(daemon: &Path) -> String {
     )
 }
 
-pub fn desktop_file(gui: &Path, tray: bool) -> String {
-    let (name, exec, extra) = if tray {
-        (
-            "Kyxen (Tray)",
-            format!("{} --tray", gui.display()),
-            "X-GNOME-Autostart-enabled=true\nNoDisplay=true\n",
-        )
-    } else {
-        ("Kyxen", gui.display().to_string(), "")
-    };
-    format!(
-        "[Desktop Entry]\n\
-         Type=Application\n\
-         Name={name}\n\
-         GenericName=G-Tasten und Beleuchtung\n\
-         Comment=Makros und RGB-Beleuchtung für Logitech-Tastaturen\n\
-         Exec={exec}\n\
-         Icon=kyxen\n\
-         Terminal=false\n\
-         Categories=Settings;HardwareSettings;\n\
-         Keywords=logitech;keyboard;gkey;macro;rgb;tastatur;\n\
-         StartupWMClass=kyxen\n\
-         {extra}"
-    )
-}
-
 fn systemctl(args: &[&str]) -> Result<()> {
     let status = Command::new("systemctl")
         .arg("--user")
@@ -152,10 +127,12 @@ pub fn install(tray_autostart: bool) -> Result<()> {
 
     if has_gui {
         write_atomic(&p.icon, ICON)?;
-        write_atomic(&p.desktop, desktop_file(&gui, false).as_bytes())?;
+        write_atomic(&p.desktop, desktop::entry(&gui, false).as_bytes())?;
         println!("✔ {}", p.desktop.display());
-        if tray_autostart {
-            write_atomic(&p.autostart, desktop_file(&gui, true).as_bytes())?;
+        // honour the app's "tray icon" setting
+        let tray_enabled = Store::default().load_global().map_or(true, |g| g.tray);
+        if tray_autostart && tray_enabled {
+            write_atomic(&p.autostart, desktop::entry(&gui, true).as_bytes())?;
             println!("✔ {} (tray at login)", p.autostart.display());
         }
         let _ = Command::new("update-desktop-database")
@@ -197,14 +174,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn unit_and_desktop_entries() {
+    fn unit_file_points_at_daemon() {
         let unit = unit_file(Path::new("/home/u/.local/bin/kyxend"));
         assert!(unit.contains("ExecStart=/home/u/.local/bin/kyxend\n"));
         assert!(unit.contains("WantedBy=graphical-session.target"));
-        let app = desktop_file(Path::new("/home/u/.local/bin/kyxen"), false);
-        assert!(app.contains("Exec=/home/u/.local/bin/kyxen\n"));
-        assert!(!app.contains("NoDisplay"));
-        let tray = desktop_file(Path::new("/home/u/.local/bin/kyxen"), true);
-        assert!(tray.contains("Exec=/home/u/.local/bin/kyxen --tray\n"));
     }
 }

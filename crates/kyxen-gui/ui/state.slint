@@ -116,4 +116,8 @@ export global Ui {
     callback set-profile-color(color);
     callback delete-profile();
     callback set-layout(int);
+    in property <bool> tray-enabled;
+    in property <bool> tray-autostart;
+    callback set-tray(bool);
+    callback set-autostart(bool);
 }
