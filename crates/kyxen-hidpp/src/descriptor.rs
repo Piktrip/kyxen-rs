@@ -3,34 +3,51 @@
 const VENDOR_PAGE: u32 = 0xff00;
 const HIDPP_LONG_ID: u32 = 0x11;
 
+/// Short items of a report descriptor as `(tag, value)`; the tag keeps the
+/// type bits (e.g. `0x04` Usage Page, `0x08` Usage, `0x84` Report ID).
+fn items(desc: &[u8]) -> impl Iterator<Item = (u8, u32)> + '_ {
+    let mut i = 0;
+    std::iter::from_fn(move || {
+        while i < desc.len() {
+            let prefix = desc[i];
+            if prefix == 0xfe {
+                // long item: fe <size> <tag> <data…>
+                i += 3 + usize::from(*desc.get(i + 1)?);
+                continue;
+            }
+            let size = [0, 1, 2, 4][usize::from(prefix & 0x03)];
+            let data = desc.get(i + 1..i + 1 + size).unwrap_or_default();
+            let value = data
+                .iter()
+                .rev()
+                .fold(0u32, |acc, &b| (acc << 8) | u32::from(b));
+            i += 1 + size;
+            return Some((prefix & 0xfc, value));
+        }
+        None
+    })
+}
+
 /// True if the descriptor declares the HID++ long report (report id 0x11)
 /// on Logitech's vendor usage page 0xFF00 — i.e. this hidraw node carries
 /// HID++. The G815 has it on USB interface 1, the G915 on interface 2.
 pub fn is_hidpp(desc: &[u8]) -> bool {
-    let mut usage_page = 0u32;
-    let mut i = 0;
-    while i < desc.len() {
-        let prefix = desc[i];
-        if prefix == 0xfe {
-            // long item: fe <size> <tag> <data…>
-            let Some(&size) = desc.get(i + 1) else { break };
-            i += 3 + usize::from(size);
-            continue;
+    let mut usage_page = 0;
+    items(desc).any(|(tag, value)| {
+        if tag == 0x04 {
+            usage_page = value;
         }
-        let size = [0, 1, 2, 4][usize::from(prefix & 0x03)];
-        let data = desc.get(i + 1..i + 1 + size).unwrap_or_default();
-        let value = data
-            .iter()
-            .rev()
-            .fold(0u32, |acc, &b| (acc << 8) | u32::from(b));
-        match prefix & 0xfc {
-            0x04 => usage_page = value,
-            0x84 if value == HIDPP_LONG_ID && usage_page == VENDOR_PAGE => return true,
-            _ => {}
-        }
-        i += 1 + size;
-    }
-    false
+        tag == 0x84 && value == HIDPP_LONG_ID && usage_page == VENDOR_PAGE
+    })
+}
+
+/// True for a boot-protocol keyboard interface: starts with Generic Desktop
+/// / Keyboard and declares no report ids.
+pub fn is_boot_keyboard(desc: &[u8]) -> bool {
+    let mut it = items(desc);
+    it.next() == Some((0x04, 0x01))
+        && it.next() == Some((0x08, 0x06))
+        && !items(desc).any(|(tag, _)| tag == 0x84)
 }
 
 #[cfg(test)]
@@ -59,6 +76,13 @@ mod tests {
         assert!(!is_hidpp(&hex(IFACE0_BOOT_KBD)));
         assert!(!is_hidpp(&hex(IFACE1_MOUSE_CC)));
         assert!(is_hidpp(&hex(IFACE2_HIDPP)));
+    }
+
+    #[test]
+    fn recognises_boot_keyboard() {
+        assert!(super::is_boot_keyboard(&hex(IFACE0_BOOT_KBD)));
+        assert!(!super::is_boot_keyboard(&hex(IFACE1_MOUSE_CC)));
+        assert!(!super::is_boot_keyboard(&hex(IFACE2_HIDPP)));
     }
 
     #[test]

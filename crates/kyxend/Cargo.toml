@@ -1,7 +1,28 @@
 [package]
 name = "kyxend"
+description = "Kyxen daemon: G-key macros, M-key profiles and per-key RGB for Logitech keyboards"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+crossbeam-channel.workspace = true
+evdev.workspace = true
+kyxen-core.workspace = true
+kyxen-hidpp.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+signal-hook.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[dev-dependencies]
+kyxen-hidpp = { workspace = true, features = ["mock"] }
 
 [lints]
 workspace = true
